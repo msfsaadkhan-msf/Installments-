@@ -38,120 +38,204 @@ export async function generateAgreementPDF(installment: Installment, clientData?
     const totalSalePrice = installment.totalAmount;
     const remainingBalance = totalSalePrice - installment.downPayment;
 
+    const todayStr = formatDateSlash(installment.startDate);
+    const invoiceNum = `INV-${installment.id.substring(0,6).toUpperCase()}`;
+    const placeVal = installment.placeOfAgreement || business?.address?.split(',').pop()?.trim() || 'Charsadda';
+    const currencyLabel = currency.split(' ')[0];
+
+    const variantsHtml = (installment.variants && installment.variants.length > 0) 
+      ? installment.variants.map(v => `
+        <tr>
+          <td style="padding:4px 8px; font-weight:bold; font-size:12px; width:30%; border-bottom:1px dashed #ccc;">${v.label}:</td>
+          <td style="padding:4px 8px; font-size:12px; border-bottom:1px dashed #ccc;">${v.value}</td>
+        </tr>`).join('') 
+      : `
+        <tr>
+          <td style="padding:4px 8px; font-weight:bold; font-size:12px; width:30%; border-bottom:1px dashed #ccc;">Model/Color:</td>
+          <td style="padding:4px 8px; font-size:12px; border-bottom:1px dashed #ccc;">${installment.productModel || ''} ${installment.color ? '('+installment.color+')' : ''}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px; font-weight:bold; font-size:12px; width:30%; border-bottom:1px dashed #ccc;">Serial/IMEI:</td>
+          <td style="padding:4px 8px; font-size:12px; border-bottom:1px dashed #ccc;">${installment.productSerial || ''}</td>
+        </tr>
+      `;
+
     const htmlContent = `
-      <!DOCTYPE html>
       <html>
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #000; font-size: 11px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .logo { font-size: 24px; font-weight: bold; color: #1a237e; letter-spacing: 2px; }
-            .business-name { font-size: 16px; font-weight: bold; margin-top: 10px; text-transform: uppercase; }
-            .form-title { font-size: 14px; font-weight: bold; margin-top: 5px; margin-bottom: 20px; }
-            .meta-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 5px; }
-            .section { margin-bottom: 15px; }
-            .section-title { font-weight: bold; font-size: 12px; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid #000; width: fit-content; padding-right: 10px; }
-            .row { display: flex; flex-direction: row; margin-bottom: 8px; }
-            .field { display: flex; flex-direction: row; flex: 1; align-items: baseline; }
-            .label { font-weight: bold; margin-right: 5px; white-space: nowrap; }
-            .value { border-bottom: 1px dotted #666; flex: 1; min-height: 14px; padding-left: 5px; color: #333; }
-            .declaration { margin-top: 15px; line-height: 1.5; text-align: justify; }
-            .signature-section { margin-top: 40px; }
-            .signature-row { display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 25px; }
-            .signature-box { width: 45%; border-top: 1px solid #000; padding-top: 5px; text-align: center; font-weight: bold; font-size: 10px; }
-            .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; font-weight: bold; }
+            @page { margin: 15mm; }
+            * { box-sizing: border-box; }
+            body {
+              font-family: 'Times New Roman', Times, serif;
+              color: #1B2A4A;
+              font-size: 12px;
+              line-height: 1.5;
+              margin: 0;
+              padding: 10px;
+            }
+            h1 { font-size: 26px; margin: 0; text-align:center; text-transform: uppercase; letter-spacing: 3px; color: #1B2A4A; }
+            h3 { font-size: 14px; margin: 0 0 2px 0; text-align:center; }
+            .section-heading {
+              font-size: 13px;
+              font-weight: bold;
+              text-transform: uppercase;
+              border-bottom: 2px solid #1B2A4A;
+              padding-bottom: 3px;
+              margin-top: 18px;
+              margin-bottom: 8px;
+            }
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+            .info-table td { padding: 3px 6px; font-size: 12px; vertical-align: bottom; }
+            .info-label { font-weight: bold; white-space: nowrap; width: 1%; padding-right: 4px; }
+            .info-value { border-bottom: 1px dashed #888; }
+            .hr { border: none; border-top: 2px solid #1B2A4A; margin: 8px 0 12px 0; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="logo">FILZA CARE</div>
-            <div class="business-name">${business?.name || 'FILZA CARE INSTALLMENT SERVICES'}</div>
-            <div class="form-title">CUSTOMER & GUARANTOR INVOICE / RECEIPT</div>
+          <div style="text-align:center">
+            <h1>${business?.name || 'FILZA CARE'}</h1>
+            <h3>${business?.name ? business.name + ' INSTALLMENT SERVICES' : 'FILZA CARE INSTALLMENT SERVICES'}</h3>
+            <p style="font-weight:bold; font-size:13px; text-transform:uppercase; margin:4px 0;">CUSTOMER &amp; GUARANTOR INVOICE / RECEIPT</p>
           </div>
-          <div class="meta-row">
-            <div>Invoice No: <b>INV-${installment.id.substring(0,6).toUpperCase()}</b></div>
-            <div>Issue Date: <b>${formatDateSlash(installment.startDate)}</b></div>
-            <div>Place: <b>${installment.placeOfAgreement || 'Main Office'}</b></div>
+          <hr class="hr" />
+
+          <table style="width:100%; margin-bottom:12px;">
+            <tr>
+              <td style="text-align:left; font-weight:bold; font-size:11px;">Invoice No: ${invoiceNum}</td>
+              <td style="text-align:center; font-weight:bold; font-size:11px;">Issue Date: ${todayStr}</td>
+              <td style="text-align:right; font-weight:bold; font-size:11px;">Place: ${placeVal}</td>
+            </tr>
+          </table>
+
+          <div class="section-heading">1) Customer Information</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Customer Name:</td>
+              <td class="info-value">${client.name || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Father's Name:</td>
+              <td class="info-value">${client.fatherName || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">CNIC No:</td>
+              <td class="info-value">${client.cnic || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Mobile No:</td>
+              <td class="info-value">${client.phone || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Address:</td>
+              <td class="info-value" colspan="3">${client.address || ''}</td>
+            </tr>
+          </table>
+
+          <div class="section-heading">2) Product Details</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Product Name:</td>
+              <td class="info-value" colspan="3">${installment.productName || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">${variantsHtml}</table>
+
+          <div class="section-heading">3) Payment Summary</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Sale Price:</td>
+              <td class="info-value">${formatCurrency(totalSalePrice, currency)}</td>
+              <td class="info-label" style="padding-left:15px;">Down Payment:</td>
+              <td class="info-value">${formatCurrency(installment.downPayment, currency)}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Balance:</td>
+              <td class="info-value">${formatCurrency(remainingBalance, currency)}</td>
+              <td class="info-label" style="padding-left:15px;">Inst. Plan:</td>
+              <td class="info-value">${installment.tenure} Months</td>
+            </tr>
+          </table>
+
+          <div class="section-heading">4) Guarantors</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Guarantor 1:</td>
+              <td class="info-value">${installment.guarantor1Name || ''}</td>
+              <td class="info-label" style="padding-left:15px;">CNIC:</td>
+              <td class="info-value">${installment.guarantor1Cnic || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Address 1:</td>
+              <td class="info-value" colspan="3">${installment.guarantor1Address || ''}</td>
+            </tr>
+          </table>
+          <div style="height:8px;"></div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Guarantor 2:</td>
+              <td class="info-value">${installment.guarantor2Name || ''}</td>
+              <td class="info-label" style="padding-left:15px;">CNIC:</td>
+              <td class="info-value">${installment.guarantor2Cnic || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Address 2:</td>
+              <td class="info-value" colspan="3">${installment.guarantor2Address || ''}</td>
+            </tr>
+          </table>
+
+          <div class="section-heading">5) Declaration / Agreement</div>
+          <div style="font-size:11px; text-align:justify; line-height:1.6; margin-top:6px;">${terms}</div>
+
+          <!-- SIGNATURES & THUMBPRINTS SECTION -->
+          <div style="page-break-inside: avoid;">
+            <!-- GUARANTOR THUMBPRINTS -->
+            <table style="width:100%; border-collapse:collapse; margin-top:40px;">
+              <tr>
+                <td style="width:50%; text-align:center; padding:10px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                  </table>
+                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0;">Guarantor 1 Thumb</p>
+                </td>
+                <td style="width:50%; text-align:center; padding:10px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                  </table>
+                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0;">Guarantor 2 Thumb</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CUSTOMER & COMPANY SIGNATURE -->
+            <table style="width:100%; border-collapse:collapse; margin-top:30px;">
+              <tr>
+                <td style="width:50%; text-align:center; padding:10px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                  </table>
+                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Customer Signature &amp; Thumb</p>
+                </td>
+                <td style="width:50%; text-align:center; padding:10px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                  </table>
+                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Company Stamp &amp; Signature</p>
+                </td>
+              </tr>
+            </table>
           </div>
-          <div class="section">
-            <div class="section-title">1) CUSTOMER INFORMATION</div>
-            <div class="row">
-              <div class="field" style="flex: 1.2;"><span class="label">Customer Name:</span><span class="value">${client.name}</span></div>
-              <div class="field"><span class="label">Father's Name:</span><span class="value">${client.fatherName || ''}</span></div>
-            </div>
-            <div class="row">
-              <div class="field"><span class="label">CNIC No:</span><span class="value">${client.cnic}</span></div>
-              <div class="field"><span class="label">Mobile No:</span><span class="value">${client.phone}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">2) PRODUCT DETAILS</div>
-            <div class="row">
-              <div class="field"><span class="label">Product Name:</span><span class="value">${installment.productName}</span></div>
-              <div class="field"><span class="label">Model:</span><span class="value">${installment.productModel || ''}</span></div>
-            </div>
-            ${installment.variants?.map((v, i) => {
-              if (i % 2 === 0) {
-                const next = installment.variants && installment.variants[i+1];
-                return `
-                  <div class="row">
-                    <div class="field"><span class="label">${v.label}:</span><span class="value">${v.value}</span></div>
-                    ${next ? `<div class="field"><span class="label">${next.label}:</span><span class="value">${next.value}</span></div>` : '<div class="field"></div>'}
-                  </div>
-                `;
-              }
-              return '';
-            }).join('') || `
-              <div class="row">
-                <div class="field"><span class="label">Color:</span><span class="value">${installment.color || ''}</span></div>
-                <div class="field"><span class="label">S/N:</span><span class="value">${installment.productSerial || ''}</span></div>
-              </div>
-            `}
-          </div>
-          <div class="section">
-            <div class="section-title">3) PAYMENT SUMMARY</div>
-            <div class="row">
-              <div class="field"><span class="label">Sale Price:</span><span class="value">${formatCurrency(totalSalePrice, currency)}</span></div>
-              <div class="field"><span class="label">Down Payment:</span><span class="value">${formatCurrency(installment.downPayment, currency)}</span></div>
-            </div>
-            <div class="row">
-              <div class="field"><span class="label">Balance:</span><span class="value">${formatCurrency(remainingBalance, currency)}</span></div>
-              <div class="field"><span class="label">Inst. Plan:</span><span class="value">${installment.tenure} Months</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">4) GUARANTORS</div>
-            <div class="row">
-              <div class="field"><span class="label">Guarantor 1:</span><span class="value">${installment.guarantor1Name || ''}</span></div>
-              <div class="field"><span class="label">CNIC:</span><span class="value">${installment.guarantor1Cnic || ''}</span></div>
-            </div>
-            <div class="row">
-              <div class="field"><span class="label">Address 1:</span><span class="value">${installment.guarantor1Address || ''}</span></div>
-            </div>
-            <div style="margin-top: 10px;"></div>
-            <div class="row">
-              <div class="field"><span class="label">Guarantor 2:</span><span class="value">${installment.guarantor2Name || ''}</span></div>
-              <div class="field"><span class="label">CNIC:</span><span class="value">${installment.guarantor2Cnic || ''}</span></div>
-            </div>
-            <div class="row">
-              <div class="field"><span class="label">Address 2:</span><span class="value">${installment.guarantor2Address || ''}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">5) CUSTOMER & GUARANTOR DECLARATION / AGREEMENT</div>
-            <div class="declaration">
-              ${terms}
-            </div>
-          </div>
-          <div class="signature-section">
-            <div class="signature-row">
-              <div class="signature-box">Customer Signature</div>
-              <div class="signature-box">Company Stamp</div>
-            </div>
-          </div>
-          <div class="footer">
+
+          <div style="margin-top:25px; padding-top:8px; border-top:1px solid #ccc; text-align:center; font-size:11px;">
             Email: ${business?.email || 'carefilza@gmail.com'} | Phone: ${business?.phone || '0333-2914553'}
+            <p style="font-size:8px; color:#999; margin-top:8px;">Software by MSF Digital Solutions (SMC-Private) Limited</p>
           </div>
         </body>
       </html>

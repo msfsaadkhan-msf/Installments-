@@ -30,9 +30,11 @@ export default function AgreementFormScreen({ navigation }: any) {
     guarantor1Name: '',
     guarantor1Cnic: '',
     guarantor1Phone: '',
+    guarantor1Address: '',
     guarantor2Name: '',
     guarantor2Cnic: '',
     guarantor2Phone: '',
+    guarantor2Address: '',
     productName: '',
     productModel: '',
     productSerial: '',
@@ -41,6 +43,9 @@ export default function AgreementFormScreen({ navigation }: any) {
     remainingBalance: '',
     monthlyInstallment: '',
     installmentDuration: '',
+    fatherName: '',
+    invoiceNo: '',
+    place: '',
   });
 
   const [clientPhoto, setClientPhoto] = useState<string | null>(null);
@@ -109,6 +114,7 @@ export default function AgreementFormScreen({ navigation }: any) {
           cnic: formData.clientCnic || '',
           address: formData.clientAddress || '',
           city: 'Unknown',
+          fatherName: formData.fatherName,
           createdAt: todayISO(),
           profileImage: clientPhoto || undefined,
           cnicFront: clientCnicFront || undefined,
@@ -151,13 +157,16 @@ export default function AgreementFormScreen({ navigation }: any) {
           guarantor1Name: formData.guarantor1Name,
           guarantor1Cnic: formData.guarantor1Cnic,
           guarantor1Phone: formData.guarantor1Phone,
+          guarantor1Address: formData.guarantor1Address,
           guarantor1CnicFront: g1CnicFront || undefined,
           guarantor1CnicBack: g1CnicBack || undefined,
           guarantor2Name: formData.guarantor2Name,
           guarantor2Cnic: formData.guarantor2Cnic,
           guarantor2Phone: formData.guarantor2Phone,
+          guarantor2Address: formData.guarantor2Address,
           guarantor2CnicFront: g2CnicFront || undefined,
           guarantor2CnicBack: g2CnicBack || undefined,
+          placeOfAgreement: formData.place,
         });
       } catch (error) {
         console.error('Failed to save installment automatically:', error);
@@ -185,7 +194,7 @@ export default function AgreementFormScreen({ navigation }: any) {
           style={{ flex: 1, height: 45, fontFamily: Fonts.regular, fontSize: 15, color: Colors.textPrimary }}
           placeholder={placeholder}
           placeholderTextColor="#999"
-          value={formData[field]}
+          value={formData[field] as string}
           onChangeText={(text) => handleChange(field, text)}
           keyboardType={keyboardType}
           onBlur={onBlur}
@@ -196,7 +205,7 @@ export default function AgreementFormScreen({ navigation }: any) {
               setFormData(prev => {
                 const newData = { ...prev, [field]: contactPhone };
                 if (relatedNameField && !prev[relatedNameField]) {
-                  newData[relatedNameField] = contactName;
+                  (newData as any)[relatedNameField] = contactName;
                 }
                 return newData;
               });
@@ -240,6 +249,7 @@ export default function AgreementFormScreen({ navigation }: any) {
               </TouchableOpacity>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 {renderInput('Full Name', 'clientName', 'e.g. Asad Khan')}
+                {renderInput("Father's Name", 'fatherName', "e.g. Muhammad Khan")}
               </View>
             </View>
 
@@ -277,6 +287,7 @@ export default function AgreementFormScreen({ navigation }: any) {
             {renderInput('Guarantor Name', 'guarantor1Name', '')}
             {renderInput('CNIC', 'guarantor1Cnic', '', 'numeric')}
             {renderInput('Phone Number', 'guarantor1Phone', '', 'phone-pad', undefined, true, 'guarantor1Name')}
+            {renderInput('Guarantor 1 Address', 'guarantor1Address', '')}
 
             <Text style={styles.subLabel}>Guarantor 1 CNIC Documents</Text>
             <View style={styles.docRow}>
@@ -308,6 +319,7 @@ export default function AgreementFormScreen({ navigation }: any) {
             {renderInput('Guarantor Name', 'guarantor2Name', '')}
             {renderInput('CNIC', 'guarantor2Cnic', '', 'numeric')}
             {renderInput('Phone Number', 'guarantor2Phone', '', 'phone-pad', undefined, true, 'guarantor2Name')}
+            {renderInput('Guarantor 2 Address', 'guarantor2Address', '')}
 
             <Text style={styles.subLabel}>Guarantor 2 CNIC Documents</Text>
             <View style={styles.docRow}>
@@ -339,6 +351,8 @@ export default function AgreementFormScreen({ navigation }: any) {
             {renderInput('Product Name (e.g. Bike, AC)', 'productName', '')}
             {renderInput('Model / Year', 'productModel', '')}
             {renderInput('Serial / Engine Number', 'productSerial', '')}
+            {renderInput('Place of Agreement', 'place', 'e.g. Charsadda')}
+            {renderInput('Invoice Number (Optional)', 'invoiceNo', 'Auto-generated if empty')}
 
             <Text style={styles.subLabel}>Product Photo</Text>
             <TouchableOpacity style={styles.productPicker} onPress={() => pickImage('productPhoto')}>
@@ -362,6 +376,24 @@ export default function AgreementFormScreen({ navigation }: any) {
             <View style={styles.autoCalculateBox}>
               <Text style={styles.autoCalculateBoxText}>Remaining Balance: PKR {formData.remainingBalance || '0'}</Text>
               <Text style={styles.autoCalculateBoxText}>Monthly Installment: PKR {formData.monthlyInstallment || '0'}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.sectionCard, { backgroundColor: Colors.primaryLight + '10', borderColor: Colors.primary, borderWidth: 1, borderStyle: 'dashed' }]}>
+            <Text style={[styles.sectionTitle, { borderBottomColor: Colors.primary }]}>Agreement Printing Note</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <MaterialCommunityIcons name="information-outline" size={20} color={Colors.primary} />
+              <Text style={{ marginLeft: 8, fontFamily: Fonts.medium, fontSize: 13, color: Colors.primary }}>
+                The following sections will be added to the PDF:
+              </Text>
+            </View>
+            <View style={styles.previewRow}>
+              <View style={styles.previewItem}><Text style={styles.previewText}>G1 Thumb</Text></View>
+              <View style={styles.previewItem}><Text style={styles.previewText}>G2 Thumb</Text></View>
+            </View>
+            <View style={styles.previewRow}>
+              <View style={styles.previewItem}><Text style={styles.previewText}>Customer Sig/Thumb</Text></View>
+              <View style={styles.previewItem}><Text style={styles.previewText}>Company Stamp/Sig</Text></View>
             </View>
           </View>
 
@@ -542,5 +574,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  previewItem: {
+    flex: 0.48,
+    height: 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+  },
+  previewText: {
+    fontFamily: Fonts.regular,
+    fontSize: 10,
+    color: Colors.textMuted,
   },
 });

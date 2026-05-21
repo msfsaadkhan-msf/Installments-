@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Alert, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Alert, Modal, Image, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from '../theme';
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
 import PaymentItem from '../components/PaymentItem';
-import { getPayments } from '../services/storage';
+import { getPayments, updateInstallment, isBiometricEnabled } from '../services/storage';
+import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
+import { useAuth } from '../context/AuthContext';
 import { Installment, Payment, InstallmentStatus } from '../types';
 import { formatPKR, calcProgress } from '../utils/currency';
 import { formatDateSlash } from '../utils/date';
@@ -19,7 +23,19 @@ export default function InstallmentDetailScreen() {
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [otherDetailsModalVisible, setOtherDetailsModalVisible] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  
+  // Other details states for editing
+  const [buyPrice, setBuyPrice] = useState('');
+  const [privateNotes, setPrivateNotes] = useState('');
+  const [privatePhotos, setPrivatePhotos] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPasswordAuth, setShowPasswordAuth] = useState(false);
+  const [showSecurePassword, setShowSecurePassword] = useState(false);
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   const loadPayments = async () => {
     if (!installment) return;
@@ -38,8 +54,106 @@ export default function InstallmentDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPayments();
+      if (installment) {
+        setBuyPrice(installment.buyPrice?.toString() || '');
+        setPrivateNotes(installment.privateNotes || '');
+        setPrivatePhotos(installment.privatePhotos || []);
+      }
     }, [installment])
   );
+
+  const { user } = useAuth();
+
+  const handleOpenOtherDetails = async () => {
+    setIsAuthenticating(true);
+    setAuthError('');
+    
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const bioEnabled = await isBiometricEnabled();
+
+      if (hasHardware && isEnrolled && bioEnabled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to view secure details',
+          fallbackLabel: 'Use Password',
+        });
+
+        if (result.success) {
+          setOtherDetailsModalVisible(true);
+          setIsAuthenticating(false);
+          return;
+        }
+      }
+      
+      // Fallback to password
+      setShowPasswordAuth(true);
+    } catch (e) {
+      setShowPasswordAuth(true);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handlePasswordAuth = async () => {
+    if (!user) return;
+    setAuthError('');
+    try {
+      const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
+      const passwords = JSON.parse(passwordsRaw || '{}');
+      if (passwords[user.id] === authPassword) {
+        setShowPasswordAuth(false);
+        setAuthPassword('');
+        setShowSecurePassword(false);
+        setOtherDetailsModalVisible(true);
+      } else {
+        setAuthError('Incorrect password');
+      }
+    } catch (e) {
+      setAuthError('Authentication failed');
+    }
+  };
+
+  const handleSaveOtherDetails = async () => {
+    if (!installment) return;
+    setIsSaving(true);
+    try {
+      const updated: Installment = {
+        ...installment,
+        buyPrice: parseFloat(buyPrice) || 0,
+        privateNotes,
+        privatePhotos,
+      };
+      await updateInstallment(updated);
+      setOtherDetailsModalVisible(false);
+      Alert.alert('Success', 'Private details updated successfully.');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save private details.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddPrivatePhoto = async () => {
+    const uri = await pickOrCaptureImage('document');
+    if (uri) {
+      try {
+        const finalUri = await saveOrganizedImage(
+          uri,
+          installment?.clientName || 'General',
+          'Client',
+          'private'
+        );
+        setPrivatePhotos([...privatePhotos, finalUri]);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to save private photo');
+      }
+    }
+  };
+
+  const removePrivatePhoto = (idx: number) => {
+    setPrivatePhotos(privatePhotos.filter((_, i) => i !== idx));
+  };
 
   if (!installment) {
     return (
@@ -108,19 +222,35 @@ export default function InstallmentDetailScreen() {
           )}
 
           <TouchableOpacity 
-            style={[styles.detailsButton, { flex: installment.status !== InstallmentStatus.COMPLETED ? 1 : 1, marginRight: Spacing.sm }]} 
+            style={[styles.detailsButton, { flex: 1, marginRight: Spacing.sm }]} 
             onPress={() => setDetailsModalVisible(true)}
           >
             <MaterialCommunityIcons name="information-outline" size={20} color={Colors.primary} />
             <Text style={styles.detailsButtonText}>Details</Text>
           </TouchableOpacity>
+        </View>
 
+        <View style={[styles.actionRow, { marginTop: -Spacing.md }]}>
           <TouchableOpacity 
-            style={[styles.detailsButton, { flex: 1, backgroundColor: Colors.primaryLight }]} 
+            style={[styles.detailsButton, { flex: 1, marginRight: Spacing.sm, backgroundColor: Colors.primaryLight }]} 
             onPress={() => generateAgreementPDF(installment)}
           >
             <MaterialCommunityIcons name="file-pdf-box" size={20} color={Colors.surface} />
             <Text style={[styles.detailsButtonText, { color: Colors.surface, marginLeft: 4 }]}>Agreement</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.detailsButton, { flex: 1, borderColor: Colors.accent, backgroundColor: Colors.surface }]} 
+            onPress={handleOpenOtherDetails}
+          >
+            {isAuthenticating ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="shield-lock" size={20} color={Colors.primary} />
+                <Text style={styles.detailsButtonText}>Other Details</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -251,6 +381,156 @@ export default function InstallmentDetailScreen() {
               resizeMode="contain"
             />
           )}
+        </View>
+      </Modal>
+
+      {/* Other Details Secure Modal */}
+      <Modal
+        visible={otherDetailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setOtherDetailsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+            <View style={[CommonStyles.rowBetween, { marginBottom: Spacing.md }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="shield-lock" size={24} color={Colors.primary} style={{ marginRight: 8 }} />
+                <Text style={{ fontFamily: Fonts.bold, fontSize: FontSizes.lg, color: Colors.primary }}>Other Private Details</Text>
+              </View>
+              <TouchableOpacity onPress={() => setOtherDetailsModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={CommonStyles.inputLabel}>Buying Price (Rs)</Text>
+                <View style={CommonStyles.inputContainer}>
+                  <TextInput 
+                    style={CommonStyles.inputText} 
+                    placeholder="e.g. 15000" 
+                    keyboardType="numeric" 
+                    value={buyPrice} 
+                    onChangeText={setBuyPrice} 
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={CommonStyles.inputLabel}>Private Business Notes</Text>
+                <View style={[CommonStyles.inputContainer, { height: 100, alignItems: 'flex-start', paddingVertical: Spacing.xs }]}>
+                  <TextInput 
+                    style={[CommonStyles.inputText, { height: '100%', textAlignVertical: 'top' }]} 
+                    placeholder="Personal notes related to this product or client..." 
+                    multiline 
+                    value={privateNotes} 
+                    onChangeText={setPrivateNotes} 
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.modalSectionTitle}>Private Documents & Photos</Text>
+              <View style={styles.modalGallery}>
+                <TouchableOpacity style={styles.addPhotoBtn} onPress={handleAddPrivatePhoto}>
+                  <MaterialCommunityIcons name="camera-plus" size={30} color={Colors.primary} />
+                  <Text style={styles.addPhotoText}>Add Photo</Text>
+                </TouchableOpacity>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {privatePhotos.map((uri, idx) => (
+                    <View key={idx} style={styles.photoThumbContainer}>
+                      <TouchableOpacity onPress={() => setViewingImage(uri)}>
+                        <Image source={{ uri }} style={styles.galleryThumb} />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.removePhotoBadge} 
+                        onPress={() => removePrivatePhoto(idx)}
+                      >
+                        <MaterialCommunityIcons name="close-circle" size={20} color={Colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <TouchableOpacity 
+                style={[CommonStyles.buttonPrimary, { marginTop: Spacing.xl, height: 50 }]} 
+                onPress={handleSaveOtherDetails}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color={Colors.primary} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="content-save" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={CommonStyles.buttonPrimaryText}>Save Private Details</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Password Authentication Modal */}
+      <Modal
+        visible={showPasswordAuth}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPasswordAuth(false)}
+      >
+        <View style={[styles.modalOverlay, { justifyContent: 'center', padding: Spacing.xl }]}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalContent, { borderRadius: Radius.xl, padding: Spacing.xl, maxHeight: undefined }]}
+          >
+            <View style={[CommonStyles.rowBetween, { marginBottom: Spacing.lg }]}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: FontSizes.lg, color: Colors.primary }}>Confirm Password</Text>
+              <TouchableOpacity onPress={() => setShowPasswordAuth(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={{ fontFamily: Fonts.regular, fontSize: FontSizes.sm, color: Colors.textSecondary, marginBottom: Spacing.sm }}>
+              Please enter your login password to access secure details.
+            </Text>
+
+            {authError ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.danger + '10', padding: 10, borderRadius: Radius.sm, marginBottom: Spacing.sm }}>
+                <MaterialCommunityIcons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={{ color: Colors.danger, fontFamily: Fonts.medium, fontSize: 12, marginLeft: 8 }}>{authError}</Text>
+              </View>
+            ) : null}
+
+            <View style={[CommonStyles.inputContainer, { backgroundColor: Colors.surface, flexDirection: 'row', alignItems: 'center' }]}>
+              <MaterialCommunityIcons name="lock-outline" size={20} color={Colors.primary} style={{ marginRight: 10 }} />
+              <TextInput
+                style={[CommonStyles.inputText, { flex: 1, backgroundColor: Colors.surface, color: Colors.textPrimary }]}
+                placeholder="Password"
+                secureTextEntry={!showSecurePassword}
+                value={authPassword}
+                onChangeText={setAuthPassword}
+                autoFocus
+                autoComplete="off"
+                importantForAutofill="no"
+                textContentType="none"
+              />
+              <TouchableOpacity onPress={() => setShowSecurePassword(!showSecurePassword)}>
+                <MaterialCommunityIcons
+                  name={showSecurePassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={Colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={[CommonStyles.buttonPrimary, { marginTop: Spacing.md, height: 48 }]} 
+              onPress={handlePasswordAuth}
+            >
+              <Text style={CommonStyles.buttonPrimaryText}>Authenticate</Text>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -463,12 +743,44 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   galleryThumb: {
-    width: 100,
-    height: 100,
+    width: 60,
+    height: 60,
     borderRadius: Radius.md,
     marginRight: Spacing.sm,
     backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  photoThumbContainer: {
+    position: 'relative',
+    marginRight: Spacing.sm,
+  },
+  removePhotoBadge: {
+    position: 'absolute',
+    top: -5,
+    right: 5,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+  },
+  addPhotoBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+    backgroundColor: Colors.surface,
+  },
+  addPhotoText: {
+    fontFamily: Fonts.medium,
+    fontSize: 8,
+    color: Colors.primary,
+    marginTop: 2,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
   },
 });

@@ -7,8 +7,8 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows, forma
 import CustomCamera from '../components/CustomCamera';
 import ContactPicker from '../components/ContactPicker';
 import Header from '../components/Header';
-import { addInstallment, getCurrencySetting } from '../services/storage';
-import { Client, Installment, InstallmentStatus } from '../types';
+import { addInstallment, addPayment, getCurrencySetting } from '../services/storage';
+import { Client, Installment, Payment, InstallmentStatus } from '../types';
 import { generateId, todayISO, addMonths } from '../utils/date';
 import { calcMonthlyInstallment } from '../utils/currency';
 import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
@@ -212,6 +212,22 @@ export default function NewInstallmentScreen() {
       if (savedPhotos.length > 0) newPlan.productImage = savedPhotos[0];
 
       await addInstallment(newPlan);
+
+      // Record down payment in payment history if > 0
+      if (newPlan.downPayment > 0) {
+        const downPaymentRecord: Payment = {
+          id: generateId(),
+          installmentId: newPlan.id,
+          clientName: newPlan.clientName,
+          productName: newPlan.productName,
+          amount: newPlan.downPayment,
+          date: startDate, // Uses the user-selected Start Date as the collection date
+          receiptNo: 'Down Payment',
+          method: 'Cash' as any,
+        };
+        await addPayment(downPaymentRecord);
+      }
+
       setLoading(false);
       navigation.goBack();
     } catch (error) {

@@ -28,6 +28,7 @@ export default function ClientPaymentScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [currency, setCurrency] = useState('PKR (₨)');
+  const [paymentDate, setPaymentDate] = useState(todayISO());
 
   const loadData = async () => {
     if (!client) return;
@@ -96,7 +97,7 @@ export default function ClientPaymentScreen() {
             clientName: plan.clientName,
             productName: plan.productName,
             amount: alloc,
-            date: todayISO(),
+            date: paymentDate,
             receiptNo: receiptNo,
             method,
           };
@@ -127,7 +128,7 @@ export default function ClientPaymentScreen() {
               clientName: plan.clientName,
               productName: plan.productName,
               amount: alloc,
-              date: todayISO(),
+              date: paymentDate,
               receiptNo: receiptNo,
               method,
             };
@@ -208,6 +209,19 @@ export default function ClientPaymentScreen() {
                 <Picker.Item label="JazzCash" value={PaymentMethod.JAZZCASH} />
                 <Picker.Item label="Easypaisa" value={PaymentMethod.EASYPAISA} />
               </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Payment Date (YYYY-MM-DD)</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput
+                style={CommonStyles.inputText}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={Colors.textMuted}
+                value={paymentDate}
+                onChangeText={setPaymentDate}
+              />
             </View>
           </View>
 

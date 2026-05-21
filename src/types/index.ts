@@ -78,6 +78,11 @@ export interface Installment {
   guarantor1CnicBack?: string;
   guarantor2CnicFront?: string;
   guarantor2CnicBack?: string;
+  
+  // Private Business Details (Secure)
+  buyPrice?: number;
+  privateNotes?: string;
+  privatePhotos?: string[];
 }
 
 export interface Payment {

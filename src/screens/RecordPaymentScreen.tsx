@@ -24,6 +24,7 @@ export default function RecordPaymentScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [currency, setCurrency] = useState('PKR (₨)');
+  const [paymentDate, setPaymentDate] = useState(todayISO());
 
   React.useEffect(() => {
     (async () => {
@@ -64,7 +65,7 @@ export default function RecordPaymentScreen() {
         clientName: installment.clientName,
         productName: installment.productName,
         amount: payAmount,
-        date: todayISO(),
+        date: paymentDate,
         receiptNo: receiptNo,
         method,
       };
@@ -149,6 +150,19 @@ export default function RecordPaymentScreen() {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Payment Date (YYYY-MM-DD)</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput
+                style={CommonStyles.inputText}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={Colors.textMuted}
+                value={paymentDate}
+                onChangeText={setPaymentDate}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={CommonStyles.inputLabel}>Receipt / Trx ID (Optional)</Text>
             <View style={CommonStyles.inputContainer}>
               <TextInput
@@ -220,7 +234,7 @@ export default function RecordPaymentScreen() {
                   clientName: installment.clientName,
                   productName: installment.productName,
                   amount: parseFloat(amount),
-                  date: todayISO(),
+                  date: paymentDate,
                   receiptNo: receiptNo,
                   method,
                 };

@@ -124,14 +124,16 @@ export default function LoginScreen({ navigation }: Props) {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <View style={[CommonStyles.inputContainer, styles.passwordContainer]}>
+            <View style={[CommonStyles.inputContainer, styles.passwordContainer, { backgroundColor: Colors.surface }]}>
               <TextInput
-                style={[CommonStyles.inputText, { flex: 1 }]}
+                style={[CommonStyles.inputText, { flex: 1, backgroundColor: Colors.surface }]}
                 placeholder="Enter your password"
                 placeholderTextColor={Colors.textMuted}
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
+                autoComplete="off"
+                importantForAutofill="no"
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <MaterialCommunityIcons
