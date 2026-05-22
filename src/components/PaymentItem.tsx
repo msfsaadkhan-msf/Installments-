@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Payment } from '../types';
 import { Colors, Fonts, FontSizes, Shadows, Radius, Spacing, formatCurrency } from '../theme';
@@ -10,11 +10,22 @@ interface PaymentItemProps {
   showDetails?: boolean;
   currency?: string;
   isLast?: boolean;
+  onLongPress?: (payment: Payment) => void;
 }
 
-export default function PaymentItem({ payment, showDetails = false, currency = 'PKR (₨)', isLast = false }: PaymentItemProps) {
+export default function PaymentItem({ 
+  payment, 
+  showDetails = false, 
+  currency = 'PKR (₨)', 
+  isLast = false,
+  onLongPress
+}: PaymentItemProps) {
   return (
-    <View style={[styles.container, isLast && { borderBottomWidth: 0 }]}>
+    <TouchableOpacity 
+      style={[styles.container, isLast && { borderBottomWidth: 0 }]}
+      onLongPress={() => onLongPress && onLongPress(payment)}
+      activeOpacity={0.7}
+    >
       <View style={styles.leftRow}>
         <View style={styles.iconContainer}>
           <MaterialCommunityIcons name="arrow-bottom-left" size={20} color={Colors.success} />
@@ -39,7 +50,7 @@ export default function PaymentItem({ payment, showDetails = false, currency = '
           )
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

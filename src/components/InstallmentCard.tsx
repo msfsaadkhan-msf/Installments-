@@ -10,18 +10,32 @@ import { formatDateSlash } from '../utils/date';
 interface InstallmentCardProps {
   installment: Installment;
   onPress: (item: Installment) => void;
+  onLongPress?: (item: Installment) => void;
   showClientName?: boolean;
   onCollectPayment?: (item: Installment) => void;
   onViewAgreement?: (item: Installment) => void;
   currency?: string;
 }
 
-export default function InstallmentCard({ installment, onPress, showClientName = false, onCollectPayment, onViewAgreement, currency = 'PKR (₨)' }: InstallmentCardProps) {
+export default function InstallmentCard({ 
+  installment, 
+  onPress, 
+  onLongPress,
+  showClientName = false, 
+  onCollectPayment, 
+  onViewAgreement, 
+  currency = 'PKR (₨)' 
+}: InstallmentCardProps) {
   const progress = calcProgress(installment.paidAmount + installment.downPayment, installment.totalAmount);
   const remaining = calcRemaining(installment.totalAmount, installment.downPayment, installment.paidAmount);
 
   return (
-    <TouchableOpacity style={styles.container} activeOpacity={0.7} onPress={() => onPress(installment)}>
+    <TouchableOpacity 
+      style={styles.container} 
+      activeOpacity={0.7} 
+      onPress={() => onPress(installment)}
+      onLongPress={() => onLongPress && onLongPress(installment)}
+    >
       <View style={styles.headerRow}>
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={1}>{installment.productName}</Text>

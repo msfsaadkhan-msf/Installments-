@@ -7,11 +7,17 @@ import { Colors, Fonts, FontSizes, Shadows, Radius, Spacing } from '../theme';
 interface ClientCardProps {
   client: Client;
   onPress: (client: Client) => void;
+  onLongPress: (client: Client) => void;
 }
 
-export default function ClientCard({ client, onPress }: ClientCardProps) {
+export default function ClientCard({ client, onPress, onLongPress }: ClientCardProps) {
   return (
-    <TouchableOpacity style={styles.container} activeOpacity={0.7} onPress={() => onPress(client)}>
+    <TouchableOpacity 
+      style={styles.container} 
+      activeOpacity={0.7} 
+      onPress={() => onPress(client)}
+      onLongPress={() => onLongPress(client)}
+    >
       <View style={styles.avatarWrapper}>
         <View style={styles.avatar}>
           {client.profileImage ? (

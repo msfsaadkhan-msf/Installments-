@@ -3,6 +3,8 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+const isValidDate = (d: Date) => d instanceof Date && !isNaN(d.getTime());
+
 const FULL_MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -13,6 +15,7 @@ const FULL_MONTHS = [
  */
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
+  if (!isValidDate(d)) return 'N/A';
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -21,6 +24,7 @@ export function formatDate(dateStr: string): string {
  */
 export function formatDateLong(dateStr: string): string {
   const d = new Date(dateStr);
+  if (!isValidDate(d)) return 'N/A';
   return `${FULL_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
@@ -28,7 +32,9 @@ export function formatDateLong(dateStr: string): string {
  * Format date as "18/05/2026"
  */
 export function formatDateSlash(dateStr: string): string {
+  if (!dateStr) return 'N/A';
   const d = new Date(dateStr);
+  if (!isValidDate(d)) return 'N/A';
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return `${day}/${month}/${d.getFullYear()}`;
@@ -65,9 +71,15 @@ export function isOverdue(dateStr: string): boolean {
  * Get next month date from a given date
  */
 export function addMonths(dateStr: string, months: number): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().split('T')[0];
+  if (!isValidDate(d)) return '';
+  d.setMonth(d.getMonth() + (isNaN(months) ? 0 : months));
+  try {
+    return d.toISOString().split('T')[0];
+  } catch (e) {
+    return '';
+  }
 }
 
 /**

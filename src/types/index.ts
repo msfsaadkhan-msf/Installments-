@@ -42,6 +42,8 @@ export interface Installment {
   clientId: string;
   clientName: string;
   productName: string;
+  productPrice?: number;
+  productPercentage?: number;
   totalAmount: number;
   downPayment: number;
   financedAmount: number;

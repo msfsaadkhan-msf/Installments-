@@ -8,7 +8,7 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
 import PaymentItem from '../components/PaymentItem';
-import { getPayments, updateInstallment, isBiometricEnabled } from '../services/storage';
+import { getPayments, deletePayment, updateInstallment, isBiometricEnabled, getInstallments } from '../services/storage';
 import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
 import { useAuth } from '../context/AuthContext';
 import { Installment, Payment, InstallmentStatus } from '../types';
@@ -36,14 +36,20 @@ export default function InstallmentDetailScreen() {
   const [showSecurePassword, setShowSecurePassword] = useState(false);
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [currentInst, setCurrentInst] = useState<Installment | null>(installment || null);
 
   const loadPayments = async () => {
-    if (!installment) return;
+    if (!currentInst) return;
     try {
+      // Refresh installment data as well
+      const allInsts = await getInstallments();
+      const updatedInst = allInsts.find(i => i.id === currentInst.id);
+      if (updatedInst) setCurrentInst(updatedInst);
+
       const all = await getPayments();
       // Filter payments for this specific installment, newest first
       const filtered = all
-        .filter(p => p.installmentId === installment.id)
+        .filter(p => p.installmentId === currentInst.id)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPayments(filtered);
     } catch (e) {
@@ -140,7 +146,7 @@ export default function InstallmentDetailScreen() {
       try {
         const finalUri = await saveOrganizedImage(
           uri,
-          installment?.clientName || 'General',
+          currentInst?.clientName || 'General',
           'Client',
           'private'
         );
@@ -155,7 +161,52 @@ export default function InstallmentDetailScreen() {
     setPrivatePhotos(privatePhotos.filter((_, i) => i !== idx));
   };
 
-  if (!installment) {
+  const handleLongPressPayment = (payment: Payment) => {
+    Alert.alert(
+      'Payment Action',
+      `Choose an action for payment of ${formatPKR(payment.amount)}`,
+      [
+        {
+          text: 'Edit Payment',
+          onPress: () => navigation.navigate('RecordPaymentScreen', { 
+            installment: currentInst, 
+            payment 
+          })
+        },
+        {
+          text: 'Delete Payment',
+          style: 'destructive',
+          onPress: () => confirmDeletePayment(payment)
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const confirmDeletePayment = (payment: Payment) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this payment record? This will revert the installment balance.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePayment(payment.id);
+              await loadPayments();
+              Alert.alert('Success', 'Payment deleted and balance updated.');
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete payment');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  if (!currentInst) {
     return (
       <View style={CommonStyles.screen}>
         <Header title="Error" showBack />
@@ -166,7 +217,7 @@ export default function InstallmentDetailScreen() {
     );
   }
 
-  const progress = calcProgress(installment.paidAmount + installment.downPayment, installment.totalAmount);
+  const progress = calcProgress(currentInst.paidAmount + currentInst.downPayment, currentInst.totalAmount);
 
   return (
     <View style={CommonStyles.screen}>
@@ -177,11 +228,11 @@ export default function InstallmentDetailScreen() {
         {/* Main Status Card */}
         <View style={styles.statusCard}>
           <View style={[CommonStyles.rowBetween, { marginBottom: Spacing.sm }]}>
-            <Text style={styles.productName}>{installment.productName}</Text>
-            <StatusBadge status={installment.status} />
+            <Text style={styles.productName}>{currentInst.productName}</Text>
+            <StatusBadge status={currentInst.status} />
           </View>
           
-          <Text style={styles.clientName}>Client: {installment.clientName}</Text>
+          <Text style={styles.clientName}>Client: {currentInst.clientName}</Text>
 
           <View style={styles.progressContainer}>
             <View style={CommonStyles.rowBetween}>
@@ -195,26 +246,37 @@ export default function InstallmentDetailScreen() {
 
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>Total Value</Text>
-              <Text style={styles.statValue}>{formatPKR(installment.totalAmount)}</Text>
+              <Text style={styles.statLabel}>Price</Text>
+              <Text style={styles.statValue}>{currentInst.productPrice ? formatPKR(currentInst.productPrice) : '-'}</Text>
             </View>
             <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Markup</Text>
+              <Text style={[styles.statValue, { color: Colors.primary }]}>{currentInst.productPercentage ? currentInst.productPercentage + '%' : '-'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Total</Text>
+              <Text style={styles.statValue}>{formatPKR(currentInst.totalAmount)}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.statsGrid, { marginTop: Spacing.sm }]}>
+            <View style={styles.statBox}>
               <Text style={styles.statLabel}>Paid</Text>
-              <Text style={[styles.statValue, { color: Colors.success }]}>{formatPKR(installment.paidAmount)}</Text>
+              <Text style={[styles.statValue, { color: Colors.success }]}>{formatPKR(currentInst.paidAmount)}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Remaining</Text>
-              <Text style={[styles.statValue, { color: Colors.danger }]}>{formatPKR(installment.remainingAmount)}</Text>
+              <Text style={[styles.statValue, { color: Colors.danger }]}>{formatPKR(currentInst.remainingAmount)}</Text>
             </View>
           </View>
         </View>
 
         {/* Action Button */}
         <View style={styles.actionRow}>
-          {installment.status !== InstallmentStatus.COMPLETED && (
+          {currentInst.status !== InstallmentStatus.COMPLETED && (
             <TouchableOpacity 
               style={[CommonStyles.buttonPrimary, { flex: 1.5, marginRight: Spacing.sm, height: 48 }]} 
-              onPress={() => navigation.navigate('RecordPaymentScreen', { installment })}
+              onPress={() => navigation.navigate('RecordPaymentScreen', { installment: currentInst })}
             >
               <MaterialCommunityIcons name="cash-register" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
               <Text style={CommonStyles.buttonPrimaryText}>Record Payment</Text>
@@ -233,7 +295,7 @@ export default function InstallmentDetailScreen() {
         <View style={[styles.actionRow, { marginTop: -Spacing.md }]}>
           <TouchableOpacity 
             style={[styles.detailsButton, { flex: 1, marginRight: Spacing.sm, backgroundColor: Colors.primaryLight }]} 
-            onPress={() => generateAgreementPDF(installment)}
+            onPress={() => generateAgreementPDF(currentInst)}
           >
             <MaterialCommunityIcons name="file-pdf-box" size={20} color={Colors.surface} />
             <Text style={[styles.detailsButtonText, { color: Colors.surface, marginLeft: 4 }]}>Agreement</Text>
@@ -257,18 +319,26 @@ export default function InstallmentDetailScreen() {
         {/* Detailed Info */}
         <Text style={CommonStyles.sectionTitle}>Plan Information</Text>
         <View style={styles.infoCard}>
-          <InfoRow label="Down Payment" value={formatPKR(installment.downPayment)} />
-          <InfoRow label="Monthly Installment" value={formatPKR(installment.monthlyAmount)} />
-          <InfoRow label="Tenure" value={`${installment.tenure} Months`} />
-          <InfoRow label="Start Date" value={formatDateSlash(installment.startDate)} />
-          <InfoRow label="Next Due Date" value={formatDateSlash(installment.nextDueDate)} noBorder />
+          <Text style={styles.modalSectionTitle}>Financials</Text>
+          <InfoRow label="Product Price" value={currentInst.productPrice ? formatPKR(currentInst.productPrice) : '-'} />
+          <InfoRow label="Markup Percentage" value={currentInst.productPercentage ? currentInst.productPercentage + '%' : '-'} />
+          <InfoRow label="Total Product Value" value={formatPKR(currentInst.totalAmount)} />
+          <InfoRow label="Down Payment" value={formatPKR(currentInst.downPayment)} />
+          <InfoRow label="Financed Amount" value={formatPKR(currentInst.financedAmount)} />
+          <InfoRow label="Monthly Installment" value={formatPKR(currentInst.monthlyAmount)} />
+          <InfoRow label="Tenure" value={currentInst.tenure + ' Months'} />
+          <InfoRow label="Remaining Amount" value={formatPKR(currentInst.remainingAmount)} noBorder />
         </View>
 
         {/* Payment History */}
         <Text style={[CommonStyles.sectionTitle, { marginTop: Spacing.lg }]}>Payment History</Text>
         {payments.length > 0 ? (
           payments.map(payment => (
-            <PaymentItem key={payment.id} payment={payment} />
+            <PaymentItem 
+              key={payment.id} 
+              payment={payment} 
+              onLongPress={handleLongPressPayment}
+            />
           ))
         ) : (
           <View style={styles.emptyContainer}>
@@ -295,20 +365,20 @@ export default function InstallmentDetailScreen() {
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalSectionTitle}>Guarantor 1</Text>
-              <InfoRow label="Name" value={installment.guarantor1Name || 'N/A'} />
-              <InfoRow label="CNIC" value={installment.guarantor1Cnic || 'N/A'} />
-              <InfoRow label="Phone" value={installment.guarantor1Phone || 'N/A'} />
-              <InfoRow label="Address" value={installment.guarantor1Address || 'N/A'} />
+              <InfoRow label="Name" value={currentInst.guarantor1Name || 'N/A'} />
+              <InfoRow label="CNIC" value={currentInst.guarantor1Cnic || 'N/A'} />
+              <InfoRow label="Phone" value={currentInst.guarantor1Phone || 'N/A'} />
+              <InfoRow label="Address" value={currentInst.guarantor1Address || 'N/A'} />
               
               <View style={styles.modalDocRow}>
-                {installment.guarantor1CnicFront && (
-                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(installment.guarantor1CnicFront!)}>
+                {currentInst.guarantor1CnicFront && (
+                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(currentInst.guarantor1CnicFront!)}>
                     <MaterialCommunityIcons name="file-image-outline" size={14} color={Colors.accent} />
                     <Text style={styles.modalDocBtnText}>CNIC Front</Text>
                   </TouchableOpacity>
                 )}
-                {installment.guarantor1CnicBack && (
-                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(installment.guarantor1CnicBack!)}>
+                {currentInst.guarantor1CnicBack && (
+                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(currentInst.guarantor1CnicBack!)}>
                     <MaterialCommunityIcons name="file-image-outline" size={14} color={Colors.accent} />
                     <Text style={styles.modalDocBtnText}>CNIC Back</Text>
                   </TouchableOpacity>
@@ -316,20 +386,20 @@ export default function InstallmentDetailScreen() {
               </View>
 
               <Text style={[styles.modalSectionTitle, { marginTop: Spacing.md }]}>Guarantor 2</Text>
-              <InfoRow label="Name" value={installment.guarantor2Name || 'N/A'} />
-              <InfoRow label="CNIC" value={installment.guarantor2Cnic || 'N/A'} />
-              <InfoRow label="Phone" value={installment.guarantor2Phone || 'N/A'} />
-              <InfoRow label="Address" value={installment.guarantor2Address || 'N/A'} />
+              <InfoRow label="Name" value={currentInst.guarantor2Name || 'N/A'} />
+              <InfoRow label="CNIC" value={currentInst.guarantor2Cnic || 'N/A'} />
+              <InfoRow label="Phone" value={currentInst.guarantor2Phone || 'N/A'} />
+              <InfoRow label="Address" value={currentInst.guarantor2Address || 'N/A'} />
 
               <View style={styles.modalDocRow}>
-                {installment.guarantor2CnicFront && (
-                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(installment.guarantor2CnicFront!)}>
+                {currentInst.guarantor2CnicFront && (
+                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(currentInst.guarantor2CnicFront!)}>
                     <MaterialCommunityIcons name="file-image-outline" size={14} color={Colors.accent} />
                     <Text style={styles.modalDocBtnText}>CNIC Front</Text>
                   </TouchableOpacity>
                 )}
-                {installment.guarantor2CnicBack && (
-                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(installment.guarantor2CnicBack!)}>
+                {currentInst.guarantor2CnicBack && (
+                  <TouchableOpacity style={styles.modalDocBtn} onPress={() => setViewingImage(currentInst.guarantor2CnicBack!)}>
                     <MaterialCommunityIcons name="file-image-outline" size={14} color={Colors.accent} />
                     <Text style={styles.modalDocBtnText}>CNIC Back</Text>
                   </TouchableOpacity>
@@ -337,17 +407,17 @@ export default function InstallmentDetailScreen() {
               </View>
 
               <Text style={[styles.modalSectionTitle, { marginTop: Spacing.md }]}>Product Details</Text>
-              <InfoRow label="Name" value={installment.productName || 'N/A'} />
-              <InfoRow label="Model" value={installment.productModel || 'N/A'} />
-              <InfoRow label="Serial" value={installment.productSerial || 'N/A'} />
+              <InfoRow label="Name" value={currentInst.productName || 'N/A'} />
+              <InfoRow label="Model" value={currentInst.productModel || 'N/A'} />
+              <InfoRow label="Serial" value={currentInst.productSerial || 'N/A'} />
               
-              {installment.variants?.map((v, idx) => (
+              {currentInst.variants?.map((v: any, idx: number) => (
                 <InfoRow key={idx} label={v.label} value={v.value} />
               ))}
 
               <Text style={[styles.modalSectionTitle, { marginTop: Spacing.md }]}>Documents & Photos</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modalGallery}>
-                {installment.productPhotos?.map((uri, idx) => (
+                {currentInst.productPhotos?.map((uri, idx) => (
                   <TouchableOpacity key={idx} onPress={() => setViewingImage(uri)}>
                     <Image source={{ uri }} style={styles.galleryThumb} />
                   </TouchableOpacity>

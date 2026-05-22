@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { addPayment, updateInstallment, getPayments, getClients, getCurrencySetting } from '../services/storage';
+import { addPayment, updatePayment, updateInstallment, getPayments, getClients, getCurrencySetting, getInstallments } from '../services/storage';
 import { generateWhatsAppReceipt } from '../utils/whatsappGenerator';
 import { generateAndPrintReceipt } from '../utils/receiptGenerator';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,15 +16,16 @@ export default function RecordPaymentScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const installment: Installment | undefined = route.params?.installment;
+  const paymentToEdit: Payment | undefined = route.params?.payment;
 
-  const [amount, setAmount] = useState(installment?.monthlyAmount.toString() || '');
-  const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [receiptNo, setReceiptNo] = useState('');
+  const [amount, setAmount] = useState(paymentToEdit?.amount.toString() || installment?.monthlyAmount.toString() || '');
+  const [method, setMethod] = useState<PaymentMethod>(paymentToEdit?.method || PaymentMethod.CASH);
+  const [receiptNo, setReceiptNo] = useState(paymentToEdit?.receiptNo || '');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [currency, setCurrency] = useState('PKR (₨)');
-  const [paymentDate, setPaymentDate] = useState(todayISO());
+  const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
 
   React.useEffect(() => {
     (async () => {
@@ -59,51 +60,51 @@ export default function RecordPaymentScreen() {
     setLoading(true);
 
     try {
-      const newPayment: Payment = {
-        id: generateId(),
-        installmentId: installment.id,
-        clientName: installment.clientName,
-        productName: installment.productName,
-        amount: payAmount,
-        date: paymentDate,
-        receiptNo: receiptNo,
-        method,
-      };
-
-      await addPayment(newPayment);
-
-      const updatedInstallment = { ...installment };
-      updatedInstallment.paidAmount += payAmount;
-      updatedInstallment.remainingAmount -= payAmount;
-      updatedInstallment.paidInstallments += 1;
-
-      if (updatedInstallment.remainingAmount <= 0) {
-        updatedInstallment.status = InstallmentStatus.COMPLETED;
+      if (paymentToEdit) {
+        const updatedPayment: Payment = {
+          ...paymentToEdit,
+          amount: payAmount,
+          date: paymentDate,
+          receiptNo,
+          method,
+        };
+        await updatePayment(updatedPayment);
+      } else {
+        const newPayment: Payment = {
+          id: generateId(),
+          installmentId: installment.id,
+          clientName: installment.clientName,
+          productName: installment.productName,
+          amount: payAmount,
+          date: paymentDate,
+          receiptNo: receiptNo,
+          method,
+        };
+        await addPayment(newPayment);
       }
 
-      await updateInstallment(updatedInstallment);
-      
-      // Trigger notification
-      sendImmediatePaymentNotification(installment.clientName, formatCurrency(payAmount, currency));
-      
+      // Re-fetch installment to get synced values
+      const installments = await getInstallments();
+      const refreshedInstallment = installments.find((i: any) => i.id === installment.id);
+
       setSuccessData({
         paidAmount: payAmount,
-        remainingAmount: updatedInstallment.remainingAmount,
-        nextDueDate: updatedInstallment.nextDueDate,
-        monthlyAmount: updatedInstallment.monthlyAmount,
-        updatedInstallment
+        remainingAmount: refreshedInstallment?.remainingAmount || 0,
+        nextDueDate: refreshedInstallment?.nextDueDate || installment.nextDueDate,
+        monthlyAmount: refreshedInstallment?.monthlyAmount || installment.monthlyAmount,
+        updatedInstallment: refreshedInstallment || installment
       });
       setLoading(false);
       setShowSuccess(true);
     } catch (error) {
-      Alert.alert('Error', 'Failed to record payment.');
+      Alert.alert('Error', 'Failed to save payment.');
       setLoading(false);
     }
   };
 
   return (
     <View style={CommonStyles.screen}>
-      <Header title="Record Payment" showBack />
+      <Header title={paymentToEdit ? "Edit Payment" : "Record Payment"} showBack />
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         

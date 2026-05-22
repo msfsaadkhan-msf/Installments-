@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Colors, Spacing, CommonStyles } from '../theme';
 import Header from '../components/Header';
@@ -7,7 +7,7 @@ import SearchBar from '../components/SearchBar';
 import FilterPills from '../components/FilterPills';
 import InstallmentCard from '../components/InstallmentCard';
 import EmptyState from '../components/EmptyState';
-import { getInstallments, getClients, getCurrencySetting } from '../services/storage';
+import { getInstallments, getClients, getCurrencySetting, deleteInstallment } from '../services/storage';
 import { Installment, InstallmentStatus, Client } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
 
@@ -93,6 +93,51 @@ export default function InstallmentsScreen() {
     setRefreshing(false);
   };
 
+  const handleLongPress = (item: Installment) => {
+    Alert.alert(
+      'Installment Plan Action',
+      `Choose an action for ${item.productName} (${item.clientName})`,
+      [
+        {
+          text: 'Edit Plan Details',
+          onPress: () => navigation.navigate('NewInstallmentScreen', { 
+            client: { id: item.clientId, name: item.clientName } as Client,
+            planToEdit: item 
+          })
+        },
+        {
+          text: 'Delete Plan',
+          style: 'destructive',
+          onPress: () => confirmDeleteInstallment(item)
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const confirmDeleteInstallment = (item: Installment) => {
+    Alert.alert(
+      'Confirm Delete Plan',
+      'Are you sure you want to delete this installment plan and all its payment history? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteInstallment(item.id);
+              await loadData();
+              Alert.alert('Success', 'Installment plan and all related records deleted.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete installment plan.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={CommonStyles.screen}>
       <Header title="Installments" />
@@ -125,6 +170,7 @@ export default function InstallmentsScreen() {
               onPress={(installment) => {
                  navigation.navigate('InstallmentDetailScreen', { installment });
               }}
+              onLongPress={handleLongPress}
               onCollectPayment={(installment) => {
                  navigation.navigate('RecordPaymentScreen', { installment });
               }}

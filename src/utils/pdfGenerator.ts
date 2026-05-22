@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { getBusinessProfile, getAgreementTerms, getCurrencySetting } from '../services/storage';
 import { formatCurrency } from '../theme';
 
@@ -50,6 +51,16 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
   const businessAddress = business?.address || '';
   const businessPhone = business?.phone || '';
   const businessEmail = business?.email || '';
+
+  let logoBase64 = '';
+  if (business?.logo) {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(business.logo, { encoding: 'base64' });
+      logoBase64 = `data:image/png;base64,${base64}`;
+    } catch (e) {
+      console.warn('Could not load logo for PDF', e);
+    }
+  }
   
   const currencyLabel = currency.split(' ')[0];
   const today = new Date().toLocaleDateString('en-GB');
@@ -129,8 +140,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
 
         <!-- ═══════ HEADER ═══════ -->
         <div class="center">
-          <h1>${businessName}</h1>
-          <h3>${businessName} INSTALLMENT SERVICES</h3>
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; margin-bottom: 10px;" />` : `<h1>${businessName}</h1>`}
           <p class="bold" style="font-size:13px; text-transform:uppercase; margin:4px 0;">CUSTOMER &amp; GUARANTOR INVOICE / RECEIPT</p>
         </div>
         <hr class="hr" />
@@ -220,7 +230,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
             <td class="info-label">Guarantor 1:</td>
             <td class="info-value">${data.guarantor1Name || ''}</td>
             <td class="info-label" style="padding-left:15px;">CNIC:</td>
-            <td class="info-value">${data.guarantor1Cnic || ''}</td>
+            <td class="info-value">${data.guarantor1Cnic || ''} (Attach Copy)</td>
           </tr>
         </table>
         <table class="info-table">
@@ -235,7 +245,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
             <td class="info-label">Guarantor 2:</td>
             <td class="info-value">${data.guarantor2Name || ''}</td>
             <td class="info-label" style="padding-left:15px;">CNIC:</td>
-            <td class="info-value">${data.guarantor2Cnic || ''}</td>
+            <td class="info-value">${data.guarantor2Cnic || ''} (Attach Copy)</td>
           </tr>
         </table>
         <table class="info-table">
@@ -281,7 +291,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
                 <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Customer Signature &amp; Thumb</p>
               </td>
               <td style="width:50%; text-align:center; padding:10px;">
-                <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                <table style="margin:0 auto; width:120px; height:70px;">
                   <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
                 </table>
                 <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Company Stamp &amp; Signature</p>
@@ -293,7 +303,6 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
         <!-- ═══════ FOOTER ═══════ -->
         <div class="footer-section">
           ${businessEmail ? `<p style="margin:2px 0;">Email: ${businessEmail}${businessPhone ? ' | Phone: ' + businessPhone : ''}</p>` : (businessPhone ? `<p style="margin:2px 0;">Phone: ${businessPhone}</p>` : '')}
-          <p style="font-size:8px; color:#999; margin-top:8px;">Software by MSF Digital Solutions (SMC-Private) Limited</p>
         </div>
 
       </body>

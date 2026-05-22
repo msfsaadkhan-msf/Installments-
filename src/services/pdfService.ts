@@ -95,8 +95,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
         </head>
         <body>
           <div style="text-align:center">
-            <h1>${business?.name || 'FILZA CARE'}</h1>
-            <h3>${business?.name ? business.name + ' INSTALLMENT SERVICES' : 'FILZA CARE INSTALLMENT SERVICES'}</h3>
+            ${business?.logo ? `<img src="${business.logo}" style="height: 60px; margin-bottom: 10px;" />` : `<h1>${business?.name || 'FILZA CARE'}</h1>`}
             <p style="font-weight:bold; font-size:13px; text-transform:uppercase; margin:4px 0;">CUSTOMER &amp; GUARANTOR INVOICE / RECEIPT</p>
           </div>
           <hr class="hr" />
@@ -166,7 +165,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
               <td class="info-label">Guarantor 1:</td>
               <td class="info-value">${installment.guarantor1Name || ''}</td>
               <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor1Cnic || ''}</td>
+              <td class="info-value">${installment.guarantor1Cnic || ''} (Attach Copy)</td>
             </tr>
           </table>
           <table class="info-table">
@@ -181,7 +180,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
               <td class="info-label">Guarantor 2:</td>
               <td class="info-value">${installment.guarantor2Name || ''}</td>
               <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor2Cnic || ''}</td>
+              <td class="info-value">${installment.guarantor2Cnic || ''} (Attach Copy)</td>
             </tr>
           </table>
           <table class="info-table">
@@ -224,7 +223,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
                   <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Customer Signature &amp; Thumb</p>
                 </td>
                 <td style="width:50%; text-align:center; padding:10px;">
-                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
+                  <table style="margin:0 auto; width:120px; height:70px;">
                     <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
                   </table>
                   <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Company Stamp &amp; Signature</p>
@@ -235,7 +234,6 @@ export async function generateAgreementPDF(installment: Installment, clientData?
 
           <div style="margin-top:25px; padding-top:8px; border-top:1px solid #ccc; text-align:center; font-size:11px;">
             Email: ${business?.email || 'carefilza@gmail.com'} | Phone: ${business?.phone || '0333-2914553'}
-            <p style="font-size:8px; color:#999; margin-top:8px;">Software by MSF Digital Solutions (SMC-Private) Limited</p>
           </div>
         </body>
       </html>
@@ -260,8 +258,13 @@ export async function generateAgreementPDF(installment: Installment, clientData?
     }
     
     return finalPath;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating PDF:', error);
+    if (error?.message?.includes('LoadBundleFromServerRequestError')) {
+      Alert.alert('Connection Error', 'Failed to communicate with the development server. Please check your Wi-Fi or restart the Expo server.');
+    } else {
+      Alert.alert('PDF Error', 'An unexpected error occurred while generating the agreement.');
+    }
     throw error;
   } finally {
     isGenerating = false;

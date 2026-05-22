@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Colors, Spacing, CommonStyles } from '../theme';
@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import ClientCard from '../components/ClientCard';
 import EmptyState from '../components/EmptyState';
-import { getClients } from '../services/storage';
+import { getClients, deleteClient } from '../services/storage';
 import { Client } from '../types';
 
 export default function ClientsScreen() {
@@ -40,7 +40,7 @@ export default function ClientsScreen() {
       const lower = searchQuery.toLowerCase();
       setFilteredClients(
         clients.filter(
-          c => c.name.toLowerCase().includes(lower) || 
+          (c: Client) => c.name.toLowerCase().includes(lower) || 
                c.phone.includes(searchQuery) ||
                c.cnic.includes(searchQuery)
         )
@@ -54,6 +54,47 @@ export default function ClientsScreen() {
     setRefreshing(true);
     await loadClients();
     setRefreshing(false);
+  };
+
+  const handleLongPress = (client: Client) => {
+    Alert.alert(
+      client.name,
+      'Choose an action for this client',
+      [
+        {
+          text: 'Edit Details',
+          onPress: () => navigation.navigate('AddClientScreen', { client })
+        },
+        {
+          text: 'Delete Client',
+          style: 'destructive',
+          onPress: () => confirmDelete(client)
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const confirmDelete = (client: Client) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${client.name}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteClient(client.id);
+              await loadClients();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete client');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -83,6 +124,7 @@ export default function ClientsScreen() {
               onPress={(client) => {
                 navigation.navigate('ClientDetailScreen', { client });
               }}
+              onLongPress={(client) => handleLongPress(client)}
             />
           )}
           refreshControl={

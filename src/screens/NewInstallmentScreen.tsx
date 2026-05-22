@@ -7,7 +7,7 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows, forma
 import CustomCamera from '../components/CustomCamera';
 import ContactPicker from '../components/ContactPicker';
 import Header from '../components/Header';
-import { addInstallment, addPayment, getCurrencySetting } from '../services/storage';
+import { addInstallment, addPayment, getCurrencySetting, updateInstallment, syncInstallmentWithPayments } from '../services/storage';
 import { Client, Installment, Payment, InstallmentStatus } from '../types';
 import { generateId, todayISO, addMonths } from '../utils/date';
 import { calcMonthlyInstallment } from '../utils/currency';
@@ -17,32 +17,40 @@ export default function NewInstallmentScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const preSelectedClient: Client | undefined = route.params?.client;
+  const planToEdit: Installment | undefined = route.params?.planToEdit;
 
-  const [productName, setProductName] = useState('');
-  const [productModel, setProductModel] = useState('');
-  const [productSerial, setProductSerial] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
-  const [downPayment, setDownPayment] = useState('');
-  const [tenure, setTenure] = useState('');
-  const [guarantor1Name, setGuarantor1Name] = useState('');
-  const [guarantor1Cnic, setGuarantor1Cnic] = useState('');
-  const [guarantor1Phone, setGuarantor1Phone] = useState('');
-  const [guarantor2Name, setGuarantor2Name] = useState('');
-  const [guarantor2Cnic, setGuarantor2Cnic] = useState('');
-  const [guarantor2Phone, setGuarantor2Phone] = useState('');
-  const [startDate, setStartDate] = useState(todayISO());
-  const [nextDueDate, setNextDueDate] = useState(addMonths(todayISO(), 1));
-  const [guarantor1Address, setGuarantor1Address] = useState('');
-  const [guarantor2Address, setGuarantor2Address] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [variants, setVariants] = useState<{ label: string, value: string }[]>([
-    { label: '', value: '' }
-  ]);
-  const [productPhotos, setProductPhotos] = useState<string[]>([]);
-  const [monthlyAmountState, setMonthlyAmountState] = useState('');
-  const [placeOfAgreement, setPlaceOfAgreement] = useState('');
+  const [productName, setProductName] = useState(planToEdit?.productName || '');
+  const [productPrice, setProductPrice] = useState(planToEdit?.productPrice?.toString() || '');
+  const [productPercentage, setProductPercentage] = useState(planToEdit?.productPercentage?.toString() || '');
+  const [productModel, setProductModel] = useState(planToEdit?.productModel || '');
+  const [productSerial, setProductSerial] = useState(planToEdit?.productSerial || '');
+  const [totalAmount, setTotalAmount] = useState(planToEdit?.totalAmount.toString() || '');
+  const [downPayment, setDownPayment] = useState(planToEdit?.downPayment.toString() || '');
+  const [tenure, setTenure] = useState(planToEdit?.tenure.toString() || '');
+  const [guarantor1Name, setGuarantor1Name] = useState(planToEdit?.guarantor1Name || '');
+  const [guarantor1Cnic, setGuarantor1Cnic] = useState(planToEdit?.guarantor1Cnic || '');
+  const [guarantor1Phone, setGuarantor1Phone] = useState(planToEdit?.guarantor1Phone || '');
+  const [guarantor2Name, setGuarantor2Name] = useState(planToEdit?.guarantor2Name || '');
+  const [guarantor2Cnic, setGuarantor2Cnic] = useState(planToEdit?.guarantor2Cnic || '');
+  const [guarantor2Phone, setGuarantor2Phone] = useState(planToEdit?.guarantor2Phone || '');
+  const [startDate, setStartDate] = useState(planToEdit?.startDate || todayISO());
+  const [nextDueDate, setNextDueDate] = useState(planToEdit?.nextDueDate || addMonths(todayISO(), 1));
+  const [guarantor1Address, setGuarantor1Address] = useState(planToEdit?.guarantor1Address || '');
+  const [guarantor2Address, setGuarantor2Address] = useState(planToEdit?.guarantor2Address || '');
+  const [endDate, setEndDate] = useState(planToEdit?.installmentEndDate || '');
+  const [variants, setVariants] = useState<{ label: string, value: string }[]>(
+    planToEdit?.variants || [{ label: '', value: '' }]
+  );
+  const [productPhotos, setProductPhotos] = useState<string[]>(planToEdit?.productPhotos || []);
+  const [monthlyAmountState, setMonthlyAmountState] = useState(planToEdit?.monthlyAmount.toString() || '');
+  const [placeOfAgreement, setPlaceOfAgreement] = useState(planToEdit?.placeOfAgreement || '');
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState('PKR (₨)');
+
+  const [g1CnicFront, setG1CnicFront] = useState<string | null>(planToEdit?.guarantor1CnicFront || null);
+  const [g1CnicBack, setG1CnicBack] = useState<string | null>(planToEdit?.guarantor1CnicBack || null);
+  const [g2CnicFront, setG2CnicFront] = useState<string | null>(planToEdit?.guarantor2CnicFront || null);
+  const [g2CnicBack, setG2CnicBack] = useState<string | null>(planToEdit?.guarantor2CnicBack || null);
 
   useEffect(() => {
     (async () => {
@@ -59,6 +67,26 @@ export default function NewInstallmentScreen() {
   }, [startDate, tenure]);
 
   const [isManualMonthly, setIsManualMonthly] = useState(false);
+  const [isManualTotal, setIsManualTotal] = useState(false);
+  const [isManualNextDue, setIsManualNextDue] = useState(false);
+
+  useEffect(() => {
+    if (!isManualTotal) {
+      const price = parseFloat(productPrice) || 0;
+      const percentage = parseFloat(productPercentage) || 0;
+      if (price > 0) {
+        const total = Math.round(price + (price * percentage / 100));
+        setTotalAmount(total.toString());
+      }
+    }
+  }, [productPrice, productPercentage]);
+
+  useEffect(() => {
+    if (!isManualNextDue && startDate) {
+      const next = addMonths(startDate, 1);
+      if (next) setNextDueDate(next);
+    }
+  }, [startDate]);
 
   useEffect(() => {
     if (!isManualMonthly) {
@@ -68,6 +96,23 @@ export default function NewInstallmentScreen() {
       setMonthlyAmountState(calculated.toString());
     }
   }, [totalAmount, downPayment, tenure]);
+
+  const handleTotalAmountChange = (val: string) => {
+    setIsManualTotal(true);
+    setTotalAmount(val);
+    const total = parseFloat(val) || 0;
+    const price = parseFloat(productPrice) || 0;
+    if (price > 0) {
+      const percentage = ((total - price) / price) * 100;
+      // Use toFixed(1) for cleaner percentage values, or round
+      setProductPercentage(parseFloat(percentage.toFixed(2)).toString());
+    }
+  };
+
+  const handleNextDueDateChange = (val: string) => {
+    setIsManualNextDue(true);
+    setNextDueDate(val);
+  };
 
   const handleMonthlyAmountChange = (val: string) => {
     setIsManualMonthly(true);
@@ -85,11 +130,15 @@ export default function NewInstallmentScreen() {
     setTenure(val);
   };
 
-  const [productImage, setProductImage] = useState<string | null>(null);
-  const [g1CnicFront, setG1CnicFront] = useState<string | null>(null);
-  const [g1CnicBack, setG1CnicBack] = useState<string | null>(null);
-  const [g2CnicFront, setG2CnicFront] = useState<string | null>(null);
-  const [g2CnicBack, setG2CnicBack] = useState<string | null>(null);
+  const handlePriceChange = (val: string) => {
+    setIsManualTotal(false);
+    setProductPrice(val);
+  };
+
+  const handlePercentageChange = (val: string) => {
+    setIsManualTotal(false);
+    setProductPercentage(val);
+  };
 
   const pickImage = async (field: string) => {
     const uri = await pickOrCaptureImage('document');
@@ -120,7 +169,7 @@ export default function NewInstallmentScreen() {
     setVariants(prev => prev.filter((_, i) => i !== index));
   };
 
-  const financedAmount = (parseFloat(totalAmount) || 0) - (parseFloat(downPayment) || 0);
+  const financedAmount = Math.max(0, (parseFloat(totalAmount) || 0) - (parseFloat(downPayment) || 0));
   const monthlyAmount = parseFloat(monthlyAmountState) || 0;
 
   const handleSave = async () => {
@@ -136,18 +185,25 @@ export default function NewInstallmentScreen() {
     setLoading(true);
 
     try {
-      let finalProduct = productImage;
+      const clientName = preSelectedClient.name;
+
       let finalG1Front = g1CnicFront;
       let finalG1Back = g1CnicBack;
       let finalG2Front = g2CnicFront;
       let finalG2Back = g2CnicBack;
 
-      const clientName = preSelectedClient.name;
+      // Save multiple product photos
+      const savedPhotos: string[] = [];
+      for (const photo of productPhotos) {
+        if (!photo.includes('IMS by MSF')) {
+          const savedPath = await saveOrganizedImage(photo, clientName, 'Client', `product_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+          savedPhotos.push(savedPath);
+        } else {
+          savedPhotos.push(photo);
+        }
+      }
 
       // Save images to organized folders
-      if (productImage && !productImage.includes('IMS by MSF')) {
-        finalProduct = await saveOrganizedImage(productImage, clientName, 'Client', 'product');
-      }
       if (g1CnicFront && !g1CnicFront.includes('IMS by MSF')) {
         finalG1Front = await saveOrganizedImage(g1CnicFront, clientName, 'Guarantors', 'g1_front');
       }
@@ -161,71 +217,97 @@ export default function NewInstallmentScreen() {
         finalG2Back = await saveOrganizedImage(g2CnicBack, clientName, 'Guarantors', 'g2_back');
       }
 
-      const newPlan: Installment = {
-        id: generateId(),
-        clientId: preSelectedClient.id,
-        clientName: preSelectedClient.name,
-        productName,
-        productModel,
-        productSerial,
-        guarantor1Name,
-        guarantor1Cnic,
-        guarantor1Phone,
-        guarantor2Name,
-        guarantor2Cnic,
-        guarantor2Phone,
-        totalAmount: parseFloat(totalAmount),
-        downPayment: parseFloat(downPayment),
-        financedAmount,
-        monthlyAmount,
-        tenure: parseInt(tenure, 10),
-        startDate,
-        nextDueDate,
-        installmentEndDate: endDate,
-        guarantor1Address,
-        guarantor2Address,
-        variants: variants.filter(v => v.label.trim() !== ''),
-        productPhotos: [], // Will populate after saving
-        placeOfAgreement,
-        productImage: '', // Deprecated but keeping for compatibility if needed
-        guarantor1CnicFront: finalG1Front || undefined,
-        guarantor1CnicBack: finalG1Back || undefined,
-        guarantor2CnicFront: finalG2Front || undefined,
-        guarantor2CnicBack: finalG2Back || undefined,
-        status: nextDueDate < todayISO() ? InstallmentStatus.OVERDUE : InstallmentStatus.ACTIVE,
-        paidAmount: 0,
-        paidInstallments: 0,
-        remainingAmount: financedAmount,
-      };
-
-      // Save multiple product photos
-      const savedPhotos = [];
-      for (const photo of productPhotos) {
-        if (!photo.includes('IMS by MSF')) {
-          const savedPath = await saveOrganizedImage(photo, clientName, 'Client', `product_${Date.now()}_${Math.random().toString(36).substring(7)}`);
-          savedPhotos.push(savedPath);
-        } else {
-          savedPhotos.push(photo);
-        }
-      }
-      newPlan.productPhotos = savedPhotos;
-      if (savedPhotos.length > 0) newPlan.productImage = savedPhotos[0];
-
-      await addInstallment(newPlan);
-
-      // Record down payment in payment history if > 0
-      if (newPlan.downPayment > 0) {
-        const downPaymentRecord: Payment = {
-          id: generateId(),
-          installmentId: newPlan.id,
-          clientName: newPlan.clientName,
-          productName: newPlan.productName,
-          amount: newPlan.downPayment,
-          date: startDate, // Uses the user-selected Start Date as the collection date
-          receiptNo: 'Down Payment',
-          method: 'Cash' as any,
+      if (planToEdit) {
+        const updatedPlan: Installment = {
+          ...planToEdit,
+          productName,
+          productModel,
+          productSerial,
+          guarantor1Name,
+          guarantor1Cnic,
+          guarantor1Phone,
+          guarantor2Name,
+          guarantor2Cnic,
+          guarantor2Phone,
+          productPrice: parseFloat(productPrice) || 0,
+          productPercentage: parseFloat(productPercentage) || 0,
+          totalAmount: parseFloat(totalAmount) || 0,
+          downPayment: parseFloat(downPayment) || 0,
+          financedAmount: financedAmount || 0,
+          monthlyAmount: monthlyAmount || 0,
+          tenure: parseInt(tenure, 10) || 0,
+          startDate,
+          nextDueDate,
+          installmentEndDate: endDate,
+          guarantor1Address,
+          guarantor2Address,
+          variants: variants.filter(v => v.label.trim() !== ''),
+          productPhotos: savedPhotos,
+          placeOfAgreement,
+          guarantor1CnicFront: finalG1Front || undefined,
+          guarantor1CnicBack: finalG1Back || undefined,
+          guarantor2CnicFront: finalG2Front || undefined,
+          guarantor2CnicBack: finalG2Back || undefined,
         };
-        await addPayment(downPaymentRecord);
+        if (savedPhotos.length > 0) updatedPlan.productImage = savedPhotos[0];
+        
+        await updateInstallment(updatedPlan);
+        await syncInstallmentWithPayments(updatedPlan.id);
+      } else {
+        const newPlan: Installment = {
+          id: generateId(),
+          clientId: preSelectedClient.id,
+          clientName: preSelectedClient.name,
+          productName,
+          productModel,
+          productSerial,
+          guarantor1Name,
+          guarantor1Cnic,
+          guarantor1Phone,
+          guarantor2Name,
+          guarantor2Cnic,
+          guarantor2Phone,
+          productPrice: parseFloat(productPrice) || 0,
+          productPercentage: parseFloat(productPercentage) || 0,
+          totalAmount: parseFloat(totalAmount) || 0,
+          downPayment: parseFloat(downPayment) || 0,
+          financedAmount: financedAmount || 0,
+          monthlyAmount: monthlyAmount || 0,
+          tenure: parseInt(tenure, 10) || 0,
+          startDate,
+          nextDueDate,
+          installmentEndDate: endDate,
+          guarantor1Address,
+          guarantor2Address,
+          variants: variants.filter(v => v.label.trim() !== ''),
+          productPhotos: savedPhotos,
+          placeOfAgreement,
+          productImage: savedPhotos.length > 0 ? savedPhotos[0] : '',
+          guarantor1CnicFront: finalG1Front || undefined,
+          guarantor1CnicBack: finalG1Back || undefined,
+          guarantor2CnicFront: finalG2Front || undefined,
+          guarantor2CnicBack: finalG2Back || undefined,
+          status: nextDueDate < todayISO() ? InstallmentStatus.OVERDUE : InstallmentStatus.ACTIVE,
+          paidAmount: 0,
+          paidInstallments: 0,
+          remainingAmount: financedAmount,
+        };
+        await addInstallment(newPlan);
+
+        // Record down payment in payment history if > 0
+        if (newPlan.downPayment > 0) {
+          const downPaymentRecord: Payment = {
+            id: generateId(),
+            installmentId: newPlan.id,
+            clientName: newPlan.clientName,
+            productName: newPlan.productName,
+            amount: newPlan.downPayment,
+            date: startDate,
+            receiptNo: 'Down Payment',
+            method: 'Cash' as any,
+          };
+          await addPayment(downPaymentRecord);
+        }
       }
 
       setLoading(false);
@@ -238,7 +320,7 @@ export default function NewInstallmentScreen() {
 
   return (
     <View style={CommonStyles.screen}>
-      <Header title="New Installment Plan" showBack={true} />
+      <Header title={planToEdit ? "Edit Plan" : "New Installment Plan"} showBack={true} />
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
@@ -441,9 +523,21 @@ export default function NewInstallmentScreen() {
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Financial Details</Text>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Total Product Value ({formatCurrency(0, currency).split(' ')[0]}) *</Text>
+            <Text style={CommonStyles.inputLabel}>Product Price ({currency.split(' ')[0]}) *</Text>
             <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="250000" keyboardType="numeric" value={totalAmount} onChangeText={setTotalAmount} />
+              <TextInput style={CommonStyles.inputText} placeholder="e.g. 100000" keyboardType="numeric" value={productPrice} onChangeText={handlePriceChange} />
+            </View>
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Markup Percentage (%) *</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput style={CommonStyles.inputText} placeholder="e.g. 35" keyboardType="numeric" value={productPercentage} onChangeText={handlePercentageChange} />
+            </View>
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Total Product Value ({currency.split(' ')[0]}) *</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput style={CommonStyles.inputText} placeholder="e.g. 135000" keyboardType="numeric" value={totalAmount} onChangeText={handleTotalAmountChange} />
             </View>
           </View>
           <View style={styles.inputGroup}>
@@ -471,7 +565,7 @@ export default function NewInstallmentScreen() {
           <View style={styles.inputGroup}>
             <Text style={CommonStyles.inputLabel}>Next Due Date (YYYY-MM-DD)</Text>
             <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} value={nextDueDate} onChangeText={setNextDueDate} placeholder="YYYY-MM-DD" />
+              <TextInput style={CommonStyles.inputText} value={nextDueDate} onChangeText={handleNextDueDateChange} placeholder="YYYY-MM-DD" />
             </View>
           </View>
           <View style={styles.inputGroup}>

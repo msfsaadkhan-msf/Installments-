@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Client, Installment, Payment, User, BusinessProfile, AgreementTerms } from '../types';
+import { Client, Installment, Payment, User, BusinessProfile, AgreementTerms, InstallmentStatus } from '../types';
 
 const KEYS = {
   USER: '@ims_user',
@@ -88,8 +88,21 @@ export async function updateClient(updated: Client): Promise<void> {
 }
 
 export async function deleteClient(id: string): Promise<void> {
+  // Delete client
   const clients = await getClients();
   await saveClients(clients.filter(c => c.id !== id));
+
+  // Delete all installments for this client
+  const installments = await getInstallments();
+  const clientInsts = installments.filter(i => i.clientId === id);
+  const remainingInsts = installments.filter(i => i.clientId !== id);
+  await saveInstallments(remainingInsts);
+
+  // Delete all payments for those installments
+  const allPayments = await getPayments();
+  const clientInstIds = clientInsts.map(i => i.id);
+  const remainingPayments = allPayments.filter(p => !clientInstIds.includes(p.installmentId));
+  await savePayments(remainingPayments);
 }
 
 // ─── Installments ─────────────────────────────────────
@@ -131,6 +144,17 @@ export async function updateInstallment(updated: Installment): Promise<void> {
   }
 }
 
+export async function deleteInstallment(id: string): Promise<void> {
+  // Delete installment
+  const installments = await getInstallments();
+  await saveInstallments(installments.filter(i => i.id !== id));
+
+  // Delete all payments for this installment
+  const allPayments = await getPayments();
+  const remainingPayments = allPayments.filter(p => p.installmentId !== id);
+  await savePayments(remainingPayments);
+}
+
 // ─── Payments ─────────────────────────────────────────
 export async function getPayments(): Promise<Payment[]> {
   return (await getJSON<Payment[]>(KEYS.PAYMENTS)) || [];
@@ -144,6 +168,56 @@ export async function addPayment(payment: Payment): Promise<void> {
   const all = await getPayments();
   all.unshift(payment);
   await savePayments(all);
+  await syncInstallmentWithPayments(payment.installmentId);
+}
+
+export async function deletePayment(paymentId: string): Promise<void> {
+  const all = await getPayments();
+  const payment = all.find(p => p.id === paymentId);
+  if (!payment) return;
+  
+  const filtered = all.filter(p => p.id !== paymentId);
+  await savePayments(filtered);
+  await syncInstallmentWithPayments(payment.installmentId);
+}
+
+export async function updatePayment(updated: Payment): Promise<void> {
+  const all = await getPayments();
+  const idx = all.findIndex(p => p.id === updated.id);
+  if (idx !== -1) {
+    all[idx] = updated;
+    await savePayments(all);
+    await syncInstallmentWithPayments(updated.installmentId);
+  }
+}
+
+export async function syncInstallmentWithPayments(installmentId: string): Promise<void> {
+  const installments = await getInstallments();
+  const instIdx = installments.findIndex(i => i.id === installmentId);
+  if (instIdx === -1) return;
+
+  const inst = installments[instIdx];
+  const allPayments = await getPayments();
+  const instPayments = allPayments.filter(p => p.installmentId === installmentId);
+  
+  const totalPaid = instPayments.reduce((sum, p) => sum + p.amount, 0);
+  
+  inst.paidAmount = totalPaid;
+  inst.remainingAmount = inst.totalAmount - inst.downPayment - totalPaid;
+  inst.paidInstallments = instPayments.length;
+  
+  if (inst.remainingAmount <= 0) {
+    inst.status = InstallmentStatus.COMPLETED;
+    inst.remainingAmount = 0; // Ensure no negative balance
+  } else {
+    // If it was completed but now has balance, set back to active
+    // (Actual overdue check happens in getInstallments)
+    if (inst.status === InstallmentStatus.COMPLETED) {
+      inst.status = InstallmentStatus.ACTIVE;
+    }
+  }
+  
+  await saveInstallments(installments);
 }
 
 // ─── Settings / Profile ───────────────────────────────
