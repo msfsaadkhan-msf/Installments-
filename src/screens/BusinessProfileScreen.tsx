@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius } from '../theme';
 import Header from '../components/Header';
-import { getBusinessProfile, saveBusinessProfile } from '../services/storage';
+import { getBusinessProfile, saveBusinessProfile, getInvoiceConfig, saveInvoiceConfig, InvoiceConfig } from '../services/storage';
 import { BusinessProfile } from '../types';
 import ContactPicker from '../components/ContactPicker';
 
@@ -19,19 +19,25 @@ export default function BusinessProfileScreen() {
     email: '',
     logo: undefined,
   });
+  const [invoiceConfig, setInvoiceConfig] = useState<InvoiceConfig>({
+    prefix: 'INV-',
+    nextNumber: 1,
+  });
 
   useEffect(() => {
-    loadProfile();
+    loadData();
   }, []);
 
-  const loadProfile = async () => {
+  const loadData = async () => {
     try {
-      const data = await getBusinessProfile();
-      if (data) {
-        setProfile(data);
-      }
+      const [data, invConfig] = await Promise.all([
+        getBusinessProfile(),
+        getInvoiceConfig(),
+      ]);
+      if (data) setProfile(data);
+      if (invConfig) setInvoiceConfig(invConfig);
     } catch (error) {
-      console.error('Failed to load business profile', error);
+      console.error('Failed to load settings', error);
     }
   };
 
@@ -62,11 +68,14 @@ export default function BusinessProfileScreen() {
 
     setLoading(true);
     try {
-      await saveBusinessProfile(profile);
-      Alert.alert('Success', 'Business Profile updated successfully!');
+      await Promise.all([
+        saveBusinessProfile(profile),
+        saveInvoiceConfig(invoiceConfig),
+      ]);
+      Alert.alert('Success', 'Settings updated successfully!');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save profile');
+      Alert.alert('Error', 'Failed to save settings');
     } finally {
       setLoading(false);
     }
@@ -161,6 +170,40 @@ export default function BusinessProfileScreen() {
           </View>
         </View>
 
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>Invoice Configuration</Text>
+          <View style={{ flexDirection: 'row' }}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
+              <Text style={CommonStyles.inputLabel}>Prefix</Text>
+              <View style={CommonStyles.inputContainer}>
+                <TextInput
+                  style={CommonStyles.inputText}
+                  placeholder="e.g. INV-"
+                  placeholderTextColor={Colors.textMuted}
+                  value={invoiceConfig.prefix}
+                  onChangeText={(val) => setInvoiceConfig(prev => ({ ...prev, prefix: val }))}
+                />
+              </View>
+            </View>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={CommonStyles.inputLabel}>Starting Number</Text>
+              <View style={CommonStyles.inputContainer}>
+                <TextInput
+                  style={CommonStyles.inputText}
+                  placeholder="e.g. 1"
+                  placeholderTextColor={Colors.textMuted}
+                  value={invoiceConfig.nextNumber.toString()}
+                  onChangeText={(val) => setInvoiceConfig(prev => ({ ...prev, nextNumber: parseInt(val) || 1 }))}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </View>
+          <Text style={styles.logoSubLabel}>
+            Preview: {invoiceConfig.prefix}{invoiceConfig.nextNumber.toString().padStart(3, '0')}
+          </Text>
+        </View>
+
         <TouchableOpacity 
           style={CommonStyles.buttonPrimary} 
           onPress={handleSave}
@@ -235,6 +278,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.md,
+    color: Colors.primary,
     marginBottom: Spacing.md,
   },
 });

@@ -150,7 +150,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
           <tr>
             <td style="text-align:left; font-weight:bold; font-size:11px;">Invoice No: ${invoiceNum}</td>
             <td style="text-align:center; font-weight:bold; font-size:11px;">Issue Date: ${today}</td>
-            <td style="text-align:right; font-weight:bold; font-size:11px;">Place: ${placeVal}</td>
+            <td style="text-align:right; font-weight:bold; font-size:11px;">Place of Agreement: ${placeVal}</td>
           </tr>
         </table>
 
@@ -191,11 +191,11 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
         </table>
         <table class="info-table">
           <tr>
-            <td class="info-label">Nothing / Serial:</td>
+            <td class="info-label">Serial / Engine:</td>
             <td class="info-value" colspan="3">${data.productSerial || ''}</td>
           </tr>
         </table>
-        ${variantsHtml ? `<table class="info-table">${variantsHtml}</table>` : ''}
+        ${variantsHtml ? `<table class="info-table" style="margin-top:4px;">${variantsHtml}</table>` : ''}
 
         <!-- ═══════ 3) PAYMENT SUMMARY ═══════ -->
         <div class="section-heading">3) Payment Summary</div>
@@ -209,7 +209,7 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
         </table>
         <table class="info-table">
           <tr>
-            <td class="info-label">Balance:</td>
+            <td class="info-label">Remaining Balance:</td>
             <td class="info-value">${currencyLabel} ${data.remainingBalance || '0'}</td>
             <td class="info-label" style="padding-left:15px;">Inst. Plan:</td>
             <td class="info-value">${data.installmentDuration || '0'} Months</td>
@@ -230,13 +230,15 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
             <td class="info-label">Guarantor 1:</td>
             <td class="info-value">${data.guarantor1Name || ''}</td>
             <td class="info-label" style="padding-left:15px;">CNIC:</td>
-            <td class="info-value">${data.guarantor1Cnic || ''} (Attach Copy)</td>
+            <td class="info-value">${data.guarantor1Cnic || ''}</td>
           </tr>
         </table>
         <table class="info-table">
           <tr>
             <td class="info-label">Address 1:</td>
-            <td class="info-value" colspan="3">${data.guarantor1Address || ''}</td>
+            <td class="info-value">${data.guarantor1Address || ''}</td>
+            <td class="info-label" style="padding-left:15px;">Phone:</td>
+            <td class="info-value">${data.guarantor1Phone || ''}</td>
           </tr>
         </table>
         <div style="height:8px;"></div>
@@ -245,13 +247,15 @@ export const generateAndShareAgreementPDF = async (data: AgreementData) => {
             <td class="info-label">Guarantor 2:</td>
             <td class="info-value">${data.guarantor2Name || ''}</td>
             <td class="info-label" style="padding-left:15px;">CNIC:</td>
-            <td class="info-value">${data.guarantor2Cnic || ''} (Attach Copy)</td>
+            <td class="info-value">${data.guarantor2Cnic || ''}</td>
           </tr>
         </table>
         <table class="info-table">
           <tr>
             <td class="info-label">Address 2:</td>
-            <td class="info-value" colspan="3">${data.guarantor2Address || ''}</td>
+            <td class="info-value">${data.guarantor2Address || ''}</td>
+            <td class="info-label" style="padding-left:15px;">Phone:</td>
+            <td class="info-value">${data.guarantor2Phone || ''}</td>
           </tr>
         </table>
 

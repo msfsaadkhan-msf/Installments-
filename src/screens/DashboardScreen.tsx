@@ -184,14 +184,23 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.heroValue}>{formatCurrency(stats.totalPending, currency)}</Text>
           <View style={styles.heroFooter}>
-            <View style={styles.heroStat}>
+            <TouchableOpacity 
+              style={styles.heroStat}
+              onPress={() => navigation.navigate('ClientsTab', { screen: 'ClientsList' })}
+            >
               <MaterialCommunityIcons name="account-group" size={14} color={Colors.accentLight} />
               <Text style={styles.heroStatText}>{stats.totalClients} Clients</Text>
-            </View>
-            <View style={styles.heroStat}>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.heroStat}
+              onPress={() => navigation.navigate('InstallmentsTab', { 
+                screen: 'InstallmentsList',
+                params: { initialFilter: InstallmentStatus.ACTIVE }
+              })}
+            >
               <MaterialCommunityIcons name="file-document" size={14} color={Colors.accentLight} />
               <Text style={styles.heroStatText}>{stats.activeInstallments} Active Plans</Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <MaterialCommunityIcons 
             name="piggy-bank-outline" 
@@ -234,6 +243,7 @@ export default function DashboardScreen() {
             icon="cash-multiple"
             color={Colors.success}
             width="100%"
+            onPress={() => navigation.navigate('ReportsTab')}
           />
         </View>
 
@@ -243,12 +253,20 @@ export default function DashboardScreen() {
             value={stats.overdueCount.toString()}
             icon="alert-decagram-outline"
             color={Colors.danger}
+            onPress={() => navigation.navigate('InstallmentsTab', { 
+              screen: 'InstallmentsList',
+              params: { initialFilter: InstallmentStatus.OVERDUE }
+            })}
           />
           <KPICard
             title="Active Plans"
             value={stats.activeInstallments.toString()}
             icon="check-decagram-outline"
             color={Colors.info}
+            onPress={() => navigation.navigate('InstallmentsTab', { 
+              screen: 'InstallmentsList',
+              params: { initialFilter: InstallmentStatus.ACTIVE }
+            })}
           />
         </View>
 

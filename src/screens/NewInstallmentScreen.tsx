@@ -7,9 +7,9 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows, forma
 import CustomCamera from '../components/CustomCamera';
 import ContactPicker from '../components/ContactPicker';
 import Header from '../components/Header';
-import { addInstallment, addPayment, getCurrencySetting, updateInstallment, syncInstallmentWithPayments } from '../services/storage';
+import { addInstallment, addPayment, getCurrencySetting, updateInstallment, syncInstallmentWithPayments, getPreviewNextInvoiceNumber, incrementInvoiceConfig } from '../services/storage';
 import { Client, Installment, Payment, InstallmentStatus } from '../types';
-import { generateId, todayISO, addMonths } from '../utils/date';
+import { generateId, todayISO, addMonths, diffMonths } from '../utils/date';
 import { calcMonthlyInstallment } from '../utils/currency';
 import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
 
@@ -46,6 +46,8 @@ export default function NewInstallmentScreen() {
   const [placeOfAgreement, setPlaceOfAgreement] = useState(planToEdit?.placeOfAgreement || '');
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState('PKR (₨)');
+  const [invoiceNo, setInvoiceNo] = useState(planToEdit?.invoiceNo || '');
+  const [isManualInvoice, setIsManualInvoice] = useState(false);
 
   const [g1CnicFront, setG1CnicFront] = useState<string | null>(planToEdit?.guarantor1CnicFront || null);
   const [g1CnicBack, setG1CnicBack] = useState<string | null>(planToEdit?.guarantor1CnicBack || null);
@@ -56,19 +58,25 @@ export default function NewInstallmentScreen() {
     (async () => {
       const c = await getCurrencySetting();
       setCurrency(c);
+      
+      if (!planToEdit) {
+        const nextInvoice = await getPreviewNextInvoiceNumber();
+        setInvoiceNo(nextInvoice);
+      }
     })();
-  }, []);
-
-  useEffect(() => {
-    if (startDate && tenure) {
-      const calculatedEndDate = addMonths(startDate, parseInt(tenure, 10) || 0);
-      setEndDate(calculatedEndDate);
-    }
-  }, [startDate, tenure]);
+  }, [planToEdit]);
 
   const [isManualMonthly, setIsManualMonthly] = useState(false);
   const [isManualTotal, setIsManualTotal] = useState(false);
   const [isManualNextDue, setIsManualNextDue] = useState(false);
+  const [isManualEndDate, setIsManualEndDate] = useState(false);
+
+  useEffect(() => {
+    if (!isManualEndDate && startDate && tenure) {
+      const calculatedEndDate = addMonths(startDate, parseInt(tenure, 10) || 0);
+      setEndDate(calculatedEndDate);
+    }
+  }, [startDate, tenure, isManualEndDate]);
 
   useEffect(() => {
     if (!isManualTotal) {
@@ -125,8 +133,20 @@ export default function NewInstallmentScreen() {
     }
   };
 
+  const handleEndDateChange = (val: string) => {
+    setEndDate(val);
+    if (val.length >= 10) {
+      const months = diffMonths(startDate, val);
+      if (months > 0) {
+        setIsManualEndDate(true);
+        setTenure(months.toString());
+      }
+    }
+  };
+
   const handleTenureChange = (val: string) => {
     setIsManualMonthly(false);
+    setIsManualEndDate(false);
     setTenure(val);
   };
 
@@ -220,6 +240,7 @@ export default function NewInstallmentScreen() {
       if (planToEdit) {
         const updatedPlan: Installment = {
           ...planToEdit,
+          invoiceNo: invoiceNo || planToEdit.invoiceNo,
           productName,
           productModel,
           productSerial,
@@ -254,11 +275,13 @@ export default function NewInstallmentScreen() {
         await updateInstallment(updatedPlan);
         await syncInstallmentWithPayments(updatedPlan.id);
       } else {
+        const finalInvoiceNo = invoiceNo || await getPreviewNextInvoiceNumber();
         const newPlan: Installment = {
           id: generateId(),
           clientId: preSelectedClient.id,
           clientName: preSelectedClient.name,
           productName,
+          invoiceNo: finalInvoiceNo,
           productModel,
           productSerial,
           guarantor1Name,
@@ -293,6 +316,7 @@ export default function NewInstallmentScreen() {
           remainingAmount: financedAmount,
         };
         await addInstallment(newPlan);
+        await incrementInvoiceConfig();
 
         // Record down payment in payment history if > 0
         if (newPlan.downPayment > 0) {
@@ -330,6 +354,24 @@ export default function NewInstallmentScreen() {
             <Text style={styles.clientBannerName}>{preSelectedClient.name}</Text>
           </View>
         )}
+
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>Invoice Details</Text>
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Invoice Number *</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput 
+                style={CommonStyles.inputText} 
+                placeholder="INV-XXXX" 
+                value={invoiceNo} 
+                onChangeText={(val) => {
+                  setInvoiceNo(val);
+                  setIsManualInvoice(true);
+                }} 
+              />
+            </View>
+          </View>
+        </View>
 
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Product Details</Text>
@@ -569,9 +611,14 @@ export default function NewInstallmentScreen() {
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>End Date (Automatic)</Text>
-            <View style={[CommonStyles.inputContainer, { backgroundColor: Colors.borderLight }]}>
-              <TextInput style={[CommonStyles.inputText, { color: Colors.textSecondary }]} value={endDate} editable={false} />
+            <Text style={CommonStyles.inputLabel}>End Date (YYYY-MM-DD)</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput 
+                style={CommonStyles.inputText} 
+                value={endDate} 
+                onChangeText={handleEndDateChange} 
+                placeholder="YYYY-MM-DD"
+              />
             </View>
           </View>
           <View style={styles.inputGroup}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Fonts, FontSizes, Shadows, Radius, Spacing } from '../theme';
 
@@ -10,11 +10,12 @@ interface KPICardProps {
   color: string;
   subtitle?: string;
   width?: number | string;
+  onPress?: () => void;
 }
 
-export default function KPICard({ title, value, icon, color, subtitle, width = '48%' }: KPICardProps) {
-  return (
-    <View style={[styles.container, { width: width as any }]}>
+export default function KPICard({ title, value, icon, color, subtitle, width = '48%', onPress }: KPICardProps) {
+  const CardContent = (
+    <>
       <View style={styles.topRow}>
         <View style={[styles.iconWrapper, { backgroundColor: color + '15' }]}>
           <MaterialCommunityIcons name={icon} size={22} color={color} />
@@ -35,6 +36,24 @@ export default function KPICard({ title, value, icon, color, subtitle, width = '
           </Text>
         )}
       </View>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity 
+        style={[styles.container, { width: width as any }]} 
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {CardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { width: width as any }]}>
+      {CardContent}
     </View>
   );
 }

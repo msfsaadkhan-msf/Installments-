@@ -50,7 +50,12 @@ export default function InstallmentDetailScreen() {
       // Filter payments for this specific installment, newest first
       const filtered = all
         .filter(p => p.installmentId === currentInst.id)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .sort((a, b) => {
+          const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (dateCompare !== 0) return dateCompare;
+          // Secondary sort by ID (newest first)
+          return b.id.localeCompare(a.id);
+        });
       setPayments(filtered);
     } catch (e) {
       console.error('Failed to load installment payments', e);

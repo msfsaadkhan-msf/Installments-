@@ -33,6 +33,9 @@ export default function PaymentItem({
         <View style={styles.infoContainer}>
           <Text style={styles.amount} numberOfLines={1}>{formatCurrency(payment.amount, currency)}</Text>
           <Text style={styles.date} numberOfLines={1}>{formatDateSlash(payment.date)} • {payment.method}</Text>
+          {payment.notes && (
+            <Text style={styles.notes} numberOfLines={2}>{payment.notes}</Text>
+          )}
         </View>
       </View>
       
@@ -43,11 +46,16 @@ export default function PaymentItem({
              <Text style={styles.productName} numberOfLines={1}>{payment.productName}</Text>
            </View>
         ) : (
-          payment.receiptNo && (
-            <View style={styles.receiptContainer}>
-              <Text style={styles.receiptText}>#{payment.receiptNo}</Text>
-            </View>
-          )
+          <View style={{ alignItems: 'flex-end' }}>
+            {payment.remainingBalance !== undefined && (
+              <Text style={styles.remainingText}>Rem: {formatCurrency(payment.remainingBalance, currency)}</Text>
+            )}
+            {payment.receiptNo && (
+              <View style={styles.receiptContainer}>
+                <Text style={styles.receiptText}>#{payment.receiptNo}</Text>
+              </View>
+            )}
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -108,6 +116,21 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     fontSize: 10,
     color: Colors.textMuted,
+  },
+  notes: {
+    fontFamily: Fonts.regular,
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 4,
+    borderRadius: Radius.sm,
+  },
+  remainingText: {
+    fontFamily: Fonts.bold,
+    fontSize: 10,
+    color: Colors.accent,
+    marginBottom: 2,
   },
   receiptContainer: {
     backgroundColor: Colors.surfaceAlt,

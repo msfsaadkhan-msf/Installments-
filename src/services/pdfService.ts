@@ -34,12 +34,23 @@ export async function generateAgreementPDF(installment: Installment, clientData?
     const currency = await getCurrencySetting();
     const terms = await getAgreementTerms();
     
+    // Load logo as base64
+    let logoBase64 = '';
+    if (business?.logo) {
+      try {
+        const base64 = await FileSystem.readAsStringAsync(business.logo, { encoding: 'base64' });
+        logoBase64 = `data:image/png;base64,${base64}`;
+      } catch (e) {
+        console.warn('Could not load logo for PDF', e);
+      }
+    }
+
     // Calculate total price accurately
     const totalSalePrice = installment.totalAmount;
     const remainingBalance = totalSalePrice - installment.downPayment;
 
     const todayStr = formatDateSlash(installment.startDate);
-    const invoiceNum = `INV-${installment.id.substring(0,6).toUpperCase()}`;
+    const invoiceNum = installment.invoiceNo || `INV-${installment.id.substring(0,6).toUpperCase()}`;
     const placeVal = installment.placeOfAgreement || business?.address?.split(',').pop()?.trim() || 'Charsadda';
     const currencyLabel = currency.split(' ')[0];
 
@@ -52,7 +63,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
       : `
         <tr>
           <td style="padding:4px 8px; font-weight:bold; font-size:12px; width:30%; border-bottom:1px dashed #ccc;">Model/Color:</td>
-          <td style="padding:4px 8px; font-size:12px; border-bottom:1px dashed #ccc;">${installment.productModel || ''} ${installment.color ? '('+installment.color+')' : ''}</td>
+          <td style="padding:4px 8px; font-size:12px; border-bottom:1px dashed #ccc;">${installment.productModel || ''}</td>
         </tr>
         <tr>
           <td style="padding:4px 8px; font-weight:bold; font-size:12px; width:30%; border-bottom:1px dashed #ccc;">Serial/IMEI:</td>
@@ -95,7 +106,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
         </head>
         <body>
           <div style="text-align:center">
-            ${business?.logo ? `<img src="${business.logo}" style="height: 60px; margin-bottom: 10px;" />` : `<h1>${business?.name || 'FILZA CARE'}</h1>`}
+            ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; margin-bottom: 10px;" />` : `<h1>${business?.name || 'FILZA CARE'}</h1>`}
             <p style="font-weight:bold; font-size:13px; text-transform:uppercase; margin:4px 0;">CUSTOMER &amp; GUARANTOR INVOICE / RECEIPT</p>
           </div>
           <hr class="hr" />
@@ -104,7 +115,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
             <tr>
               <td style="text-align:left; font-weight:bold; font-size:11px;">Invoice No: ${invoiceNum}</td>
               <td style="text-align:center; font-weight:bold; font-size:11px;">Issue Date: ${todayStr}</td>
-              <td style="text-align:right; font-weight:bold; font-size:11px;">Place: ${placeVal}</td>
+              <td style="text-align:right; font-weight:bold; font-size:11px;">Place of Agreement: ${placeVal}</td>
             </tr>
           </table>
 
@@ -152,7 +163,7 @@ export async function generateAgreementPDF(installment: Installment, clientData?
           </table>
           <table class="info-table">
             <tr>
-              <td class="info-label">Balance:</td>
+              <td class="info-label">Remaining Balance:</td>
               <td class="info-value">${formatCurrency(remainingBalance, currency)}</td>
               <td class="info-label" style="padding-left:15px;">Inst. Plan:</td>
               <td class="info-value">${installment.tenure} Months</td>
@@ -165,13 +176,15 @@ export async function generateAgreementPDF(installment: Installment, clientData?
               <td class="info-label">Guarantor 1:</td>
               <td class="info-value">${installment.guarantor1Name || ''}</td>
               <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor1Cnic || ''} (Attach Copy)</td>
+              <td class="info-value">${installment.guarantor1Cnic || ''}</td>
             </tr>
           </table>
           <table class="info-table">
             <tr>
               <td class="info-label">Address 1:</td>
-              <td class="info-value" colspan="3">${installment.guarantor1Address || ''}</td>
+              <td class="info-value">${installment.guarantor1Address || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Phone:</td>
+              <td class="info-value">${installment.guarantor1Phone || ''}</td>
             </tr>
           </table>
           <div style="height:8px;"></div>
@@ -180,13 +193,15 @@ export async function generateAgreementPDF(installment: Installment, clientData?
               <td class="info-label">Guarantor 2:</td>
               <td class="info-value">${installment.guarantor2Name || ''}</td>
               <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor2Cnic || ''} (Attach Copy)</td>
+              <td class="info-value">${installment.guarantor2Cnic || ''}</td>
             </tr>
           </table>
           <table class="info-table">
             <tr>
               <td class="info-label">Address 2:</td>
-              <td class="info-value" colspan="3">${installment.guarantor2Address || ''}</td>
+              <td class="info-value">${installment.guarantor2Address || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Phone:</td>
+              <td class="info-value">${installment.guarantor2Phone || ''}</td>
             </tr>
           </table>
 

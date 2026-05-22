@@ -13,7 +13,13 @@ const KEYS = {
   NOTIFICATIONS: '@ims_notifications',
   BIOMETRIC: '@ims_biometric',
   LAST_USER: '@ims_last_user',
+  INVOICE_CONFIG: '@ims_invoice_config',
 };
+
+export interface InvoiceConfig {
+  prefix: string;
+  nextNumber: number;
+}
 
 // ─── Generic Helpers ──────────────────────────────────
 async function getJSON<T>(key: string): Promise<T | null> {
@@ -200,19 +206,60 @@ export async function syncInstallmentWithPayments(installmentId: string): Promis
   const allPayments = await getPayments();
   const instPayments = allPayments.filter(p => p.installmentId === installmentId);
   
-  const totalPaid = instPayments.reduce((sum, p) => sum + p.amount, 0);
+  // Sort chronologically for ledger calculation (oldest first)
+  const sortedChronologically = [...instPayments].sort((a, b) => {
+    const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateCompare !== 0) return dateCompare;
+    // Secondary sort by ID (which includes a timestamp)
+    return a.id.localeCompare(b.id);
+  });
   
-  inst.paidAmount = totalPaid;
-  inst.remainingAmount = inst.totalAmount - inst.downPayment - totalPaid;
-  inst.paidInstallments = instPayments.length;
+  let running = inst.totalAmount;
+  sortedChronologically.forEach(p => {
+    running -= p.amount;
+    p.remainingBalance = running;
+  });
+  
+  // Save updated balances to global payments list
+  const otherInstPayments = allPayments.filter(p => p.installmentId !== installmentId);
+  await savePayments([...otherInstPayments, ...sortedChronologically]);
+
+  // Separate 'Down Payment' records from regular installments
+  const downPaymentRecords = sortedChronologically.filter(p => p.receiptNo === 'Down Payment');
+  const regularPayments = sortedChronologically.filter(p => p.receiptNo !== 'Down Payment');
+  
+  const downPaymentSum = downPaymentRecords.reduce((sum, p) => sum + p.amount, 0);
+  const regularPaidSum = regularPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  
+  // Update downPayment based on payment records.
+  // For new installments, the 'Down Payment' record is created automatically.
+  // If the user deletes it, downPaymentSum will be 0, and we reflect that.
+  // We only do this if there's at least one payment record (of any type)
+  // to avoid accidentally wiping downPayment for old installments that have no records at all.
+  if (instPayments.length > 0 || (inst.paidAmount === 0 && inst.paidInstallments === 0)) {
+    inst.downPayment = downPaymentSum;
+  }
+  
+  inst.paidAmount = regularPaidSum;
+  inst.remainingAmount = Math.max(0, inst.totalAmount - inst.downPayment - inst.paidAmount);
+  
+  // Update paidInstallments count
+  inst.paidInstallments = regularPayments.length;
+  
+  // Real-time update of nextDueDate: startDate + (paidInstallments + 1)
+  const { addMonths, todayISO } = require('../utils/date');
+  inst.nextDueDate = addMonths(inst.startDate, inst.paidInstallments + 1);
   
   if (inst.remainingAmount <= 0) {
     inst.status = InstallmentStatus.COMPLETED;
     inst.remainingAmount = 0; // Ensure no negative balance
   } else {
-    // If it was completed but now has balance, set back to active
-    // (Actual overdue check happens in getInstallments)
-    if (inst.status === InstallmentStatus.COMPLETED) {
+    // Check if new nextDueDate makes it overdue or active
+    const today = todayISO();
+    if (inst.nextDueDate < today) {
+      inst.status = InstallmentStatus.OVERDUE;
+    } else {
       inst.status = InstallmentStatus.ACTIVE;
     }
   }
@@ -276,6 +323,35 @@ export async function getLastUser(): Promise<User | null> {
 export async function saveLastUser(user: User): Promise<void> {
   await setJSON(KEYS.LAST_USER, user);
 }
+
+// ─── Invoice Configuration ────────────────────────────
+export async function getInvoiceConfig(): Promise<InvoiceConfig> {
+  const config = await getJSON<InvoiceConfig>(KEYS.INVOICE_CONFIG);
+  return config || { prefix: 'INV-', nextNumber: 1 };
+}
+
+export async function saveInvoiceConfig(config: InvoiceConfig): Promise<void> {
+  await setJSON(KEYS.INVOICE_CONFIG, config);
+}
+
+export async function getPreviewNextInvoiceNumber(): Promise<string> {
+  const config = await getInvoiceConfig();
+  const numStr = config.nextNumber.toString().padStart(3, '0');
+  return `${config.prefix}${numStr}`;
+}
+
+export async function incrementInvoiceConfig(): Promise<void> {
+  const config = await getInvoiceConfig();
+  await saveInvoiceConfig({
+    ...config,
+    nextNumber: config.nextNumber + 1
+  });
+}
+
+// Keep the old name for backward compatibility during transition if needed, 
+// but make it NOT increment by default or remove it if we update all callers.
+// I'll remove it since I'm updating the caller.
+
 
 // ─── Seed Demo Data ───────────────────────────────────
 export async function seedDemoData(): Promise<void> {

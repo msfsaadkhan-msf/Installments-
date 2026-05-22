@@ -39,9 +39,16 @@ export default function InstallmentCard({
       <View style={styles.headerRow}>
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={1}>{installment.productName}</Text>
-          {showClientName && (
-            <Text style={styles.clientName} numberOfLines={1}>Client: {installment.clientName}</Text>
-          )}
+          <View style={styles.subHeader}>
+            {installment.invoiceNo ? (
+              <Text style={styles.invoiceNo}>{installment.invoiceNo}</Text>
+            ) : null}
+            {showClientName && (
+              <Text style={styles.clientName} numberOfLines={1}>
+                {installment.invoiceNo ? ' • ' : ''}Client: {installment.clientName}
+              </Text>
+            )}
+          </View>
         </View>
         <StatusBadge status={installment.status} />
       </View>
@@ -125,9 +132,22 @@ const styles = StyleSheet.create({
   },
   clientName: {
     fontFamily: Fonts.medium,
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.textMuted,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 2,
+  },
+  invoiceNo: {
+    fontFamily: Fonts.bold,
+    fontSize: 10,
+    color: Colors.accentDark,
+    backgroundColor: Colors.accent + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: Radius.sm,
   },
   metricsContainer: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { Colors, Spacing, CommonStyles } from '../theme';
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
@@ -20,10 +20,17 @@ const FILTER_OPTIONS = [
 
 export default function InstallmentsScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<{ params: { initialFilter?: string } }, 'params'>>();
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [filteredInstallments, setFilteredInstallments] = useState<Installment[]>([]);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(route.params?.initialFilter || 'all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (route.params?.initialFilter) {
+      setFilter(route.params.initialFilter);
+    }
+  }, [route.params?.initialFilter]);
   const [clientPhones, setClientPhones] = useState<Record<string, string>>({});
   const [currency, setCurrency] = useState('PKR (₨)');
   const [refreshing, setRefreshing] = useState(false);

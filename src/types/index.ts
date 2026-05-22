@@ -85,6 +85,7 @@ export interface Installment {
   buyPrice?: number;
   privateNotes?: string;
   privatePhotos?: string[];
+  invoiceNo?: string;
 }
 
 export interface Payment {
@@ -96,6 +97,8 @@ export interface Payment {
   date: string;
   receiptNo: string;
   method: PaymentMethod;
+  notes?: string;
+  remainingBalance?: number;
 }
 
 export interface DashboardStats {

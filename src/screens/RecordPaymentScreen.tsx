@@ -26,6 +26,7 @@ export default function RecordPaymentScreen() {
   const [successData, setSuccessData] = useState<any>(null);
   const [currency, setCurrency] = useState('PKR (₨)');
   const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
+  const [notes, setNotes] = useState(paymentToEdit?.notes || '');
 
   React.useEffect(() => {
     (async () => {
@@ -67,6 +68,7 @@ export default function RecordPaymentScreen() {
           date: paymentDate,
           receiptNo,
           method,
+          notes,
         };
         await updatePayment(updatedPayment);
       } else {
@@ -79,6 +81,7 @@ export default function RecordPaymentScreen() {
           date: paymentDate,
           receiptNo: receiptNo,
           method,
+          notes,
         };
         await addPayment(newPayment);
       }
@@ -172,6 +175,21 @@ export default function RecordPaymentScreen() {
                 placeholderTextColor={Colors.textMuted}
                 value={receiptNo}
                 onChangeText={setReceiptNo}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Payment Notes (Optional)</Text>
+            <View style={[CommonStyles.inputContainer, { minHeight: 80 }]}>
+              <TextInput
+                style={[CommonStyles.inputText, { textAlignVertical: 'top' }]}
+                placeholder="Add any extra details here..."
+                placeholderTextColor={Colors.textMuted}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                numberOfLines={3}
               />
             </View>
           </View>

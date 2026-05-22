@@ -83,6 +83,26 @@ export function addMonths(dateStr: string, months: number): string {
 }
 
 /**
+ * Get difference in months between two dates
+ */
+export function diffMonths(startStr: string, endStr: string): number {
+  if (!startStr || !endStr) return 0;
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  if (!isValidDate(start) || !isValidDate(end)) return 0;
+  
+  let months = (end.getFullYear() - start.getFullYear()) * 12;
+  months += end.getMonth() - start.getMonth();
+  
+  // If the end day is less than the start day, subtract one month
+  if (end.getDate() < start.getDate()) {
+    months--;
+  }
+  
+  return months > 0 ? months : 0;
+}
+
+/**
  * Generate unique ID
  */
 export function generateId(): string {
