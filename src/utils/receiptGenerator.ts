@@ -1,105 +1,208 @@
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { getBusinessProfile, getCurrencySetting } from '../services/storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import { getBusinessProfile, getCurrencySetting, getClients, getPayments } from '../services/storage';
 import { formatCurrency } from '../theme';
-import { Payment, Installment, BusinessProfile } from '../types';
+import { Payment, Installment } from '../types';
+import { formatDateSlash } from './date';
 
 export const generateAndPrintReceipt = async (
   clientName: string,
   payments: Payment[],
   installments: Installment[]
 ) => {
-  const [business, currency] = await Promise.all([
+  const [business, currency, clients, allStoredPayments] = await Promise.all([
     getBusinessProfile(),
-    getCurrencySetting()
+    getCurrencySetting(),
+    getClients(),
+    getPayments()
   ]);
 
   const businessName = business?.name || 'INSTALLMENT SERVICES';
-  const businessLogo = business?.logo;
-  const businessAddress = business?.address || 'Pakistan';
+  let businessLogo = '';
+  
+  if (business?.logo) {
+    try {
+      if (business.logo.startsWith('file://')) {
+        const base64 = await FileSystem.readAsStringAsync(business.logo, { encoding: 'base64' });
+        businessLogo = `data:image/png;base64,${base64}`;
+      } else {
+        businessLogo = business.logo;
+      }
+    } catch (e) {
+      console.warn("Failed to load receipt logo as base64", e);
+    }
+  }
+
+  const businessAddress = business?.address || '';
   const businessPhone = business?.phone || '';
 
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const currencyLabel = currency.split(' ')[0];
+  const payment = payments[0];
+  if (!payment) return;
+
+  const inst = installments.find(i => i.id === payment.installmentId);
+  if (!inst) return;
+
+  const clientInfo = clients.find(c => c.id === inst.clientId);
+
+  // Fetch all payments for this specific installment
+  const historyPayments = allStoredPayments
+    .filter(p => p.installmentId === inst.id)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+  // If the current payment isn't in storage yet, append it for display
+  if (!historyPayments.find(p => p.id === payment.id)) {
+      historyPayments.push(payment);
+  }
+  
+  historyPayments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const totalProductValue = inst.totalAmount;
+  const advance = inst.downPayment;
+  const currentPayment = payment.amount;
+  const totalPaid = inst.paidAmount || historyPayments.reduce((sum, p) => sum + p.amount, 0) + advance;
+  const remaining = inst.remainingAmount;
+  const nextDue = inst.nextDueDate;
+  const monthly = inst.monthlyAmount;
+
+  const cur = currency.split(' ')[0];
 
   const html = `
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-          .receipt-container { border: 1px solid #eee; padding: 20px; border-radius: 8px; }
-          .header { text-align: center; border-bottom: 2px solid #1a2a3a; padding-bottom: 10px; margin-bottom: 15px; }
-          .logo { width: 60px; height: 60px; border-radius: 30px; margin-bottom: 5px; }
-          h1 { font-size: 18px; margin: 0; color: #1a2a3a; text-transform: uppercase; }
-          .biz-info { font-size: 11px; color: #666; }
-          .receipt-title { text-align: center; font-size: 14px; font-weight: bold; margin: 15px 0; color: #d4af37; text-decoration: underline; }
-          .meta-info { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 15px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-          th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
-          th { color: #555; background-color: #f9f9f9; }
-          .total-row { font-weight: bold; font-size: 14px; background-color: #f4f4f4; }
-          .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; }
-          .signature { margin-top: 40px; border-top: 1px solid #ccc; width: 150px; display: inline-block; padding-top: 5px; font-size: 11px; }
-          .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 60px; color: rgba(0,0,0,0.03); z-index: -1; pointer-events: none; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            color: #000000;
+          }
+          /* Standard 80mm thermal paper width settings */
+          @page {
+            margin: 0;
+            size: 80mm auto; 
+          }
+          .ticket {
+            width: 76mm;
+            margin: 0 auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 2mm;
+            box-sizing: border-box;
+          }
+          .centered { text-align: center; }
+          .bold { font-weight: bold; }
+          .logo { max-width: 40mm; max-height: 40mm; display: block; margin: 0 auto 5px auto; }
+          .title { font-size: 18px; margin: 5px 0; text-transform: uppercase; text-align: center; font-weight: bold; }
+          .border-top { border-top: 1px dashed black; }
+          .border-bottom { border-bottom: 1px dashed black; }
+          .section { margin: 10px 0; padding: 5px 0; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          td { padding: 3px 0; }
+          .right { text-align: right; }
+          
+          .history-list { font-size: 12px; margin-top: 10px; }
+          .history-item { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dotted #ccc; }
+          
+          .box { 
+            border: 1px solid black; 
+            border-radius: 8px; 
+            padding: 15px 10px; 
+            margin-top: 25px; 
+            text-align: center; 
+          }
+          .sig-line {
+            margin-top: 40px; 
+            border-top: 1px dashed black; 
+            display: inline-block; 
+            padding-top: 5px;
+            font-size: 11px;
+          }
+          .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            text-align: center;
+          }
         </style>
       </head>
       <body>
-        <div class="watermark">PAID</div>
-        <div class="receipt-container">
-          <div class="header">
+        <div class="ticket">
+          <div class="centered">
             ${businessLogo ? `<img src="${businessLogo}" class="logo" />` : ''}
-            <h1>${businessName}</h1>
-            <div class="biz-info">${businessAddress}</div>
-            <div class="biz-info">Phone: ${businessPhone}</div>
+            <div class="title">${businessName}</div>
+            ${businessAddress ? `<div>${businessAddress}</div>` : ''}
+            ${businessPhone ? `<div>Phone: ${businessPhone}</div>` : ''}
+            
+            <div class="bold" style="margin-top: 15px; font-size: 15px;">PAYMENT RECORD</div>
+            <div style="margin-top: 5px;">Date: ${payment.date || new Date().toLocaleDateString('en-GB')}</div>
+            <div>Receipt No: ${payment.receiptNo || inst.invoiceNo || 'N/A'}</div>
+          </div>
+          
+          <div class="section border-top">
+            <div class="bold" style="margin-bottom: 3px;">CLIENT DETAILS</div>
+            <div>Customer: ${clientName}</div>
+            ${clientInfo?.phone ? `<div>Phone: ${clientInfo.phone}</div>` : ''}
           </div>
 
-          <div class="receipt-title">PAYMENT RECEIPT</div>
+          <div class="section">
+            <div class="bold" style="margin-bottom: 3px;">PRODUCT & PLAN</div>
+            <div>Product: ${inst.productName}</div>
+            <div>Total Price: ${formatCurrency(totalProductValue, cur)}</div>
+            <div>Advance Paid: ${formatCurrency(advance, cur)}</div>
+            <div>Monthly Inst: ${formatCurrency(monthly, cur)}</div>
+          </div>
 
-          <div class="meta-info">
-            <div>
-              <strong>Client:</strong> ${clientName}<br/>
-              <strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}
-            </div>
-            <div style="text-align: right;">
-              <strong>Receipt No:</strong> ${payments[0]?.receiptNo || 'N/A'}<br/>
-              <strong>Method:</strong> ${payments[0]?.method || 'N/A'}
+          <div class="section border-top">
+            <div class="bold">PAYMENT LEDGER</div>
+            <div class="history-list">
+              <div class="history-item bold">
+                 <span>Date</span>
+                 <span>Amount</span>
+              </div>
+              <div class="history-item">
+                 <span>${formatDateSlash(inst.startDate)}</span>
+                 <span>${formatCurrency(advance, cur)} (Adv)</span>
+              </div>
+              ${historyPayments.map(p => `
+                <div class="history-item ${p.id === payment.id ? 'bold' : ''}">
+                  <span>${formatDateSlash(p.date)}</span>
+                  <span>${formatCurrency(p.amount, cur)} ${p.id === payment.id ? '(Now)' : ''}</span>
+                </div>
+              `).join('')}
             </div>
           </div>
 
-          <table>
-            <thead>
+          <div class="section border-top border-bottom" style="padding: 10px 0;">
+            <table>
               <tr>
-                <th>Product / Plan</th>
-                <th>Paid Amount</th>
-                <th>Remaining</th>
+                <td>Instills Paid:</td>
+                <td class="right">${historyPayments.length}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${payments.map(p => {
-                const inst = installments.find(i => i.id === p.installmentId);
-                return `
-                  <tr>
-                    <td>${p.productName}</td>
-                    <td>${formatCurrency(p.amount, currency)}</td>
-                    <td>${inst ? formatCurrency(inst.remainingAmount, currency) : 'N/A'}</td>
-                  </tr>
-                `;
-              }).join('')}
-              <tr class="total-row">
-                <td>TOTAL PAID</td>
-                <td colspan="2">${formatCurrency(totalPaid, currency)}</td>
+              <tr>
+                <td>Total Paid:</td>
+                <td class="right">${formatCurrency(totalPaid, cur)}</td>
               </tr>
-            </tbody>
-          </table>
+              <tr class="bold">
+                <td>Remaining Bal:</td>
+                <td class="right">${formatCurrency(remaining, cur)}</td>
+              </tr>
+              ${remaining > 0 ? `
+              <tr>
+                <td>Next Due Date:</td>
+                <td class="right">${formatDateSlash(nextDue)}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
 
-          <div style="margin-top: 20px; text-align: right;">
-            <div class="signature">Collector Signature</div>
+          <div class="box">
+            <div class="bold" style="font-size: 16px; margin-bottom: 10px;">Verified Receipt</div>
+            <div class="sig-line">Authorized Signature / Stamp</div>
           </div>
 
           <div class="footer">
-            Software by MSF Digital Solutions (SMC-Private) Limited<br/>
-            Thank you for your business!
+            <div class="bold" style="font-size: 13px;">Thank you for choosing ${businessName}!</div>
           </div>
         </div>
       </body>
@@ -107,9 +210,12 @@ export const generateAndPrintReceipt = async (
   `;
 
   try {
-    // We use printAsync which opens the native print dialog
-    await Print.printAsync({ html });
+    await Print.printAsync({ 
+      html, 
+      width: 227 
+    });
   } catch (error) {
     console.error('Error printing receipt', error);
   }
 };
+
