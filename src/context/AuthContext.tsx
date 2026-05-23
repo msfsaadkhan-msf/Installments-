@@ -9,7 +9,8 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLastUser, saveLastUser, saveCurrentUser, clearCurrentUser, syncFromCloud } from '../services/storage';
+import { getLastUser, saveLastUser, saveCurrentUser, clearCurrentUser, syncFromCloud, syncDirtyKeys } from '../services/storage';
+import NetInfo from '@react-native-community/netinfo';
 
 // ─── State ────────────────────────────────────────────
 interface AuthState {
@@ -61,17 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for Firebase Auth state changes globally
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Hydrate from local cache instantly to avoid loading hangs, especially for offline/slow connections
+        // Hydrate from local cache instantly — works 100% offline
         const cachedUserRaw = await AsyncStorage.getItem('@ims_user');
         if (cachedUserRaw) {
           dispatch({ type: 'LOGIN', payload: JSON.parse(cachedUserRaw) });
         }
         
-        // Asynchronously check cloud for updates without blocking the UI
+        // Background: fetch latest user doc + sync cloud data (only if online)
         getDoc(doc(db, 'users', firebaseUser.uid)).then(async (userDoc) => {
           if (userDoc.exists()) {
              const userData = userDoc.data() as User;
              await syncFromCloud();
+             await syncDirtyKeys(); // Push any offline-queued writes
              dispatch({ type: 'LOGIN', payload: userData });
              await saveCurrentUser(userData);
              await saveLastUser(userData);
@@ -82,7 +84,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    // NetInfo listener: auto-sync dirty keys whenever internet reconnects
+    const unsubscribeNetInfo = NetInfo.addEventListener((state: any) => {
+      if (state.isConnected && state.isInternetReachable && auth.currentUser) {
+        syncDirtyKeys().catch(() => {});
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeNetInfo();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -95,11 +107,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'User data not found in database.' };
       }
 
-      // State will update optimistically, then sync.
       await saveCurrentUser(userDoc.data() as User);
       dispatch({ type: 'LOGIN', payload: userDoc.data() as User });
+      // Push any pending offline writes now that we're online
+      syncDirtyKeys().catch(() => {});
       return { success: true };
     } catch (err: any) {
+      // ── Offline fallback: let user in using cached credentials ──
+      const netState = await NetInfo.fetch();
+      if (!netState.isConnected) {
+        const cachedUserRaw = await AsyncStorage.getItem('@ims_user');
+        if (cachedUserRaw) {
+          const cachedUser = JSON.parse(cachedUserRaw) as User;
+          // Check email matches cached user so wrong credentials don't bypass login
+          if (cachedUser.email?.toLowerCase() === email.toLowerCase()) {
+            dispatch({ type: 'LOGIN', payload: cachedUser });
+            return { success: true };
+          }
+        }
+        return { success: false, error: 'No internet connection. Please connect and try again.' };
+      }
+
       let errorMessage = 'Login failed';
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password.';

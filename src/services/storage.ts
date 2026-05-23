@@ -66,6 +66,55 @@ export async function syncFromCloud(): Promise<void> {
   }
 }
 
+// ─── Dirty Key Tracking (Offline Queue) ───────────────
+const DIRTY_KEYS_STORAGE = '@ims_dirty_keys';
+
+async function markDirty(key: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_KEYS_STORAGE);
+    const dirtyKeys: string[] = raw ? JSON.parse(raw) : [];
+    if (!dirtyKeys.includes(key)) {
+      dirtyKeys.push(key);
+      await AsyncStorage.setItem(DIRTY_KEYS_STORAGE, JSON.stringify(dirtyKeys));
+    }
+  } catch (_e) {}
+}
+
+async function clearDirty(key: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_KEYS_STORAGE);
+    const dirtyKeys: string[] = raw ? JSON.parse(raw) : [];
+    const updated = dirtyKeys.filter(k => k !== key);
+    await AsyncStorage.setItem(DIRTY_KEYS_STORAGE, JSON.stringify(updated));
+  } catch (_e) {}
+}
+
+// Push all pending offline changes to Firebase
+export async function syncDirtyKeys(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_KEYS_STORAGE);
+    const dirtyKeys: string[] = raw ? JSON.parse(raw) : [];
+    if (dirtyKeys.length === 0) return;
+
+    for (const key of dirtyKeys) {
+      try {
+        const localRaw = await AsyncStorage.getItem(key);
+        if (localRaw) {
+          const localData = JSON.parse(localRaw);
+          const docRef = doc(db, 'users', user.uid, 'appData', key);
+          await setDoc(docRef, { data: localData });
+          await clearDirty(key);
+        }
+      } catch (_e) {
+        // Individual key failed, will retry next time
+      }
+    }
+  } catch (_e) {}
+}
+
 async function setJSON<T>(key: string, value: T): Promise<void> {
   // Always save locally FIRST — this MUST succeed for the app to function
   await AsyncStorage.setItem(key, JSON.stringify(value));
@@ -75,13 +124,16 @@ async function setJSON<T>(key: string, value: T): Promise<void> {
     return;
   }
 
-  // Fire-and-forget: sync to Firebase in background, never block or crash
+  // Try to sync to Firebase; if it fails, mark the key as dirty for later retry
   try {
     const uid = auth.currentUser.uid;
     const docRef = doc(db, 'users', uid, 'appData', key);
-    setDoc(docRef, { data: value }).catch(() => {});
+    await setDoc(docRef, { data: value });
+    // Success — make sure this key is not in the dirty list
+    await clearDirty(key);
   } catch (_e) {
-    // Ignore — data is safely stored locally
+    // Firebase failed (offline) — mark dirty so it syncs when back online
+    await markDirty(key);
   }
 }
 
