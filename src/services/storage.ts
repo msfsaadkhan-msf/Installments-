@@ -21,14 +21,68 @@ export interface InvoiceConfig {
   nextNumber: number;
 }
 
+import { auth, db } from './firebaseConfig';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+// Keys that should strictly be saved to local device storage
+const LOCAL_KEYS = [
+  KEYS.USER,
+  KEYS.USERS,
+  KEYS.LAST_USER,
+  KEYS.BIOMETRIC,
+  KEYS.CURRENCY,
+  KEYS.NOTIFICATIONS
+];
+
 // ─── Generic Helpers ──────────────────────────────────
 async function getJSON<T>(key: string): Promise<T | null> {
-  const raw = await AsyncStorage.getItem(key);
-  return raw ? JSON.parse(raw) : null;
+  // STRICTLY read from local storage first (instant, never fails, avoids cloud overwrite bugs)
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+// Called ONE TIME during login to hydrate the device
+export async function syncFromCloud(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG];
+  
+  try {
+    for (const key of CLOUD_KEYS) {
+      const docRef = doc(db, 'users', user.uid, 'appData', key);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const cloudData = snap.data().data;
+        await AsyncStorage.setItem(key, JSON.stringify(cloudData));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to sync from cloud during login", err);
+  }
 }
 
 async function setJSON<T>(key: string, value: T): Promise<void> {
+  // Always save locally FIRST — this MUST succeed for the app to function
   await AsyncStorage.setItem(key, JSON.stringify(value));
+  
+  // Skip cloud sync for local-only keys or if not logged in
+  if (LOCAL_KEYS.includes(key) || !auth.currentUser) {
+    return;
+  }
+
+  // Fire-and-forget: sync to Firebase in background, never block or crash
+  try {
+    const uid = auth.currentUser.uid;
+    const docRef = doc(db, 'users', uid, 'appData', key);
+    setDoc(docRef, { data: value }).catch(() => {});
+  } catch (_e) {
+    // Ignore — data is safely stored locally
+  }
 }
 
 // ─── Auth ─────────────────────────────────────────────
@@ -58,7 +112,14 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function clearCurrentUser(): Promise<void> {
-  await AsyncStorage.removeItem(KEYS.USER);
+  const keysToRemove = [
+    KEYS.USER, 
+    KEYS.CLIENTS, 
+    KEYS.INSTALLMENTS, 
+    KEYS.PAYMENTS, 
+    KEYS.INVOICE_CONFIG
+  ];
+  await Promise.all(keysToRemove.map(k => AsyncStorage.removeItem(k)));
 }
 
 export async function getUsers(): Promise<User[]> {

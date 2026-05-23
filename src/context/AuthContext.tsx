@@ -1,17 +1,15 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { User } from '../types';
-import {
-  getCurrentUser,
-  getUsers,
-  saveCurrentUser,
-  saveUsers,
-  clearCurrentUser,
-  updateCurrentUser,
-  getLastUser,
-  saveLastUser,
-} from '../services/storage';
-import { generateId } from '../utils/date';
+import { auth, db } from '../services/firebaseConfig';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLastUser, saveLastUser, saveCurrentUser, clearCurrentUser, syncFromCloud } from '../services/storage';
 
 // ─── State ────────────────────────────────────────────
 interface AuthState {
@@ -55,140 +53,111 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ─── Demo Credentials ─────────────────────────────────
-const DEMO_USER: User = {
-  id: 'demo-admin',
-  name: 'Atif Aslam',
-  email: 'admin@ims.pk',
-  phone: '0300-1234567',
-  role: 'admin',
-};
-
-const DEMO_PASSWORD = 'admin123';
-
 // ─── Provider ─────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check persisted session on app load
   useEffect(() => {
-    let isMounted = true;
-    
-    (async () => {
-      const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 3000));
-      
-      try {
-        const result = await Promise.race([getCurrentUser(), timeoutPromise]);
-        
-        if (!isMounted) return;
-
-        if (result === 'TIMEOUT') {
-          dispatch({ type: 'SET_LOADING', payload: false });
-          return;
+    // Listen for Firebase Auth state changes globally
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Hydrate from local cache instantly to avoid loading hangs, especially for offline/slow connections
+        const cachedUserRaw = await AsyncStorage.getItem('@ims_user');
+        if (cachedUserRaw) {
+          dispatch({ type: 'LOGIN', payload: JSON.parse(cachedUserRaw) });
         }
-
-        const user = result as User | null;
         
-        if (user) {
-          dispatch({ type: 'LOGIN', payload: user });
-        } else {
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }
-      } catch (err) {
-        if (isMounted) dispatch({ type: 'SET_LOADING', payload: false });
+        // Asynchronously check cloud for updates without blocking the UI
+        getDoc(doc(db, 'users', firebaseUser.uid)).then(async (userDoc) => {
+          if (userDoc.exists()) {
+             const userData = userDoc.data() as User;
+             await syncFromCloud();
+             dispatch({ type: 'LOGIN', payload: userData });
+             await saveCurrentUser(userData);
+             await saveLastUser(userData);
+          }
+        }).catch(_err => { /* silently ignore cloud sync failure */ });
+      } else {
+        dispatch({ type: 'LOGOUT' });
       }
-    })();
+    });
 
-    return () => { isMounted = false; };
+    return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      // Check demo credentials first
-      if (email.toLowerCase() === DEMO_USER.email && password === DEMO_PASSWORD) {
-        await saveCurrentUser(DEMO_USER);
-        await saveLastUser(DEMO_USER);
-        dispatch({ type: 'LOGIN', payload: DEMO_USER });
-        return { success: true };
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
+      if (!userDoc.exists()) {
+        await signOut(auth);
+        return { success: false, error: 'User data not found in database.' };
       }
 
-      // Check registered users
-      const users = await getUsers();
-      const found = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (!found) {
-        return { success: false, error: 'Account not found. Please register first.' };
-      }
-
-      // For now we store password in a simple way
-      const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
-      const passwords = JSON.parse(passwordsRaw || '{}');
-
-      if (passwords[found.id] !== password) {
-        return { success: false, error: 'Incorrect password. Please try again.' };
-      }
-
-      await saveCurrentUser(found);
-      await saveLastUser(found);
-      dispatch({ type: 'LOGIN', payload: found });
+      // State will update optimistically, then sync.
+      await saveCurrentUser(userDoc.data() as User);
+      dispatch({ type: 'LOGIN', payload: userDoc.data() as User });
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Login failed' };
+      let errorMessage = 'Login failed';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password.';
+      }
+      return { success: false, error: errorMessage };
     }
   };
 
   const register = async (name: string, email: string, phone: string, password: string) => {
     try {
-      const users = await getUsers();
-      const exists = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (exists) {
-        return { success: false, error: 'An account with this email already exists.' };
-      }
-
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      
       const newUser: User = {
-        id: generateId(),
+        id: uid,
         name,
         email: email.toLowerCase(),
         phone,
         role: 'admin',
       };
 
-      users.push(newUser);
-      await saveUsers(users);
+      // Save user to Firestore
+      await setDoc(doc(db, 'users', uid), newUser);
 
-      // Store password
-      const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
-      const passwords = JSON.parse(passwordsRaw || '{}');
-      passwords[newUser.id] = password;
-      await AsyncStorage.setItem('@ims_passwords', JSON.stringify(passwords));
-
+      // Explicitly lock the user in memory and cache so race conditions don't boot them out
       await saveCurrentUser(newUser);
-      await saveLastUser(newUser);
       dispatch({ type: 'LOGIN', payload: newUser });
+
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Registration failed' };
+      let errorMessage = 'Registration failed';
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      }
+      return { success: false, error: errorMessage };
     }
   };
 
   const logout = async () => {
-    await clearCurrentUser();
-    dispatch({ type: 'LOGOUT' });
+    try {
+      await signOut(auth);
+      // State updates automatically
+    } catch (error) {
+      console.error("Logout error", error);
+    }
   };
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const updated = await updateCurrentUser(data);
-      if (updated) {
-        dispatch({ type: 'LOGIN', payload: updated });
-        return { success: true };
-      }
-      return { success: false, error: 'User not found' };
+      if (!auth.currentUser || !state.user) return { success: false, error: 'Not logged in' };
+      
+      const updatedUser = { ...state.user, ...data };
+      await setDoc(doc(db, 'users', auth.currentUser.uid), updatedUser, { merge: true });
+      
+      dispatch({ type: 'LOGIN', payload: updatedUser });
+      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Update failed' };
     }
@@ -196,13 +165,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const bioLogin = async () => {
     try {
-      const lastUser = await getLastUser();
-      if (!lastUser) {
-        return { success: false, error: 'No user registered for biometric login.' };
+      const last = await getLastUser();
+      // Notice: Since Firebase handles session persistence automatically, 
+      // if someone is logging via biometrics and there is NO active Firebase session, 
+      // they MUST re-enter their password (or we have to store logic for custom token).
+      // For this implementation, if Firebase auto-login triggered, bioLogin is just unlocking 
+      // the screen rather than re-authenticating Firebase.
+      if (!last) return { success: false, error: 'No user registered for biometric login.' };
+      
+      // If Firebase still says we have a currentUser (cached session), just proceed
+      if (auth.currentUser) {
+        dispatch({ type: 'LOGIN', payload: last });
+        return { success: true };
+      } else {
+        return { success: false, error: 'Session expired. Please log in with password.' };
       }
-      await saveCurrentUser(lastUser);
-      dispatch({ type: 'LOGIN', payload: lastUser });
-      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Biometric login failed' };
     }
@@ -223,3 +200,4 @@ export function useAuth() {
   }
   return ctx;
 }
+

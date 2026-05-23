@@ -17,6 +17,7 @@ import {
   saveNotificationSettings, 
   NotificationSettings, 
   getAgreementTerms,
+  saveAgreementTerms,
   getBusinessProfile,
   saveBusinessProfile,
   exportBackup,
@@ -256,7 +257,6 @@ export default function SettingsScreen() {
   const handleSaveTerms = async () => {
     setIsUpdating(true);
     try {
-      const { saveAgreementTerms } = await import('../services/storage');
       await saveAgreementTerms(tempTerms);
       setTermsContent(tempTerms);
       setIsEditingTerms(false);
@@ -529,6 +529,17 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.toolBtn} onPress={() => setTempTerms(tempTerms + '<u></u>')}>
                     <MaterialCommunityIcons name="format-underline" size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.toolBtn} onPress={() => {
+                    // Auto-detect next heading number from patterns like "1.", "2.", "3." etc. everywhere
+                    const matches = tempTerms.match(/\d+\./g) || [];
+                    const nextNum = matches.length > 0 
+                      ? Math.max(...matches.map(m => parseInt(m))) + 1 
+                      : 1;
+                    const sp = tempTerms.endsWith('\n') ? '\n' : '\n\n';
+                    setTempTerms(tempTerms.trimEnd() + `${sp}${nextNum}. `);
+                  }}>
+                    <MaterialCommunityIcons name="format-header-pound" size={20} color={Colors.primary} />
                   </TouchableOpacity>
                   <Text style={styles.toolHint}>Tip: Put text between tags like &lt;b&gt;Important&lt;/b&gt;</Text>
                 </View>

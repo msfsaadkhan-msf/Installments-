@@ -58,10 +58,12 @@ export interface Installment {
 
   // Extended Details
   guarantor1Name?: string;
+  guarantor1FatherName?: string;
   guarantor1Cnic?: string;
   guarantor1Phone?: string;
   guarantor1Address?: string;
   guarantor2Name?: string;
+  guarantor2FatherName?: string;
   guarantor2Cnic?: string;
   guarantor2Phone?: string;
   guarantor2Address?: string;

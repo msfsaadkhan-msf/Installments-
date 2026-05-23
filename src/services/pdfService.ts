@@ -106,7 +106,8 @@ export async function generateAgreementPDF(installment: Installment, clientData?
         </head>
         <body>
           <div style="text-align:center">
-            ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; margin-bottom: 10px;" />` : `<h1>${business?.name || 'FILZA CARE'}</h1>`}
+            ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; margin-bottom: 5px;" />` : ''}
+            <h1 style="font-size: 20px; font-weight: bold;">${business?.name || 'FILZA CARE'}</h1>
             <p style="font-weight:bold; font-size:13px; text-transform:uppercase; margin:4px 0;">CUSTOMER &amp; GUARANTOR INVOICE / RECEIPT</p>
           </div>
           <hr class="hr" />
@@ -169,22 +170,36 @@ export async function generateAgreementPDF(installment: Installment, clientData?
               <td class="info-value">${installment.tenure} Months</td>
             </tr>
           </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Plan Start Date:</td>
+              <td class="info-value">${installment.startDate ? formatDateSlash(installment.startDate) : ''}</td>
+              <td class="info-label" style="padding-left:15px;">Plan End Date:</td>
+              <td class="info-value">${installment.installmentEndDate ? formatDateSlash(installment.installmentEndDate) : ''}</td>
+            </tr>
+          </table>
 
           <div class="section-heading">4) Guarantors</div>
           <table class="info-table">
             <tr>
               <td class="info-label">Guarantor 1:</td>
               <td class="info-value">${installment.guarantor1Name || ''}</td>
-              <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor1Cnic || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Father's Name:</td>
+              <td class="info-value">${installment.guarantor1FatherName || ''}</td>
             </tr>
           </table>
           <table class="info-table">
             <tr>
-              <td class="info-label">Address 1:</td>
-              <td class="info-value">${installment.guarantor1Address || ''}</td>
+              <td class="info-label">CNIC:</td>
+              <td class="info-value">${installment.guarantor1Cnic || ''}</td>
               <td class="info-label" style="padding-left:15px;">Phone:</td>
               <td class="info-value">${installment.guarantor1Phone || ''}</td>
+            </tr>
+          </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Address:</td>
+              <td class="info-value" colspan="3">${installment.guarantor1Address || ''}</td>
             </tr>
           </table>
           <div style="height:8px;"></div>
@@ -192,56 +207,59 @@ export async function generateAgreementPDF(installment: Installment, clientData?
             <tr>
               <td class="info-label">Guarantor 2:</td>
               <td class="info-value">${installment.guarantor2Name || ''}</td>
-              <td class="info-label" style="padding-left:15px;">CNIC:</td>
-              <td class="info-value">${installment.guarantor2Cnic || ''}</td>
+              <td class="info-label" style="padding-left:15px;">Father's Name:</td>
+              <td class="info-value">${installment.guarantor2FatherName || ''}</td>
             </tr>
           </table>
           <table class="info-table">
             <tr>
-              <td class="info-label">Address 2:</td>
-              <td class="info-value">${installment.guarantor2Address || ''}</td>
+              <td class="info-label">CNIC:</td>
+              <td class="info-value">${installment.guarantor2Cnic || ''}</td>
               <td class="info-label" style="padding-left:15px;">Phone:</td>
               <td class="info-value">${installment.guarantor2Phone || ''}</td>
             </tr>
           </table>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Address:</td>
+              <td class="info-value" colspan="3">${installment.guarantor2Address || ''}</td>
+            </tr>
+          </table>
 
           <div class="section-heading">5) Declaration / Agreement</div>
-          <div style="font-size:11px; text-align:justify; line-height:1.6; margin-top:6px;">${terms}</div>
+          <div style="font-size:11px; text-align:justify; line-height:1.6; margin-top:6px;">${(terms || '')
+            .replace(/\*{1,2}(.+?)\*{1,2}/g, '<b style="font-size:12px; display:block; margin-top:10px;">$1</b>')
+            .replace(/<b>(.+?)<\/b>/gi, '<b style="font-size:12px; display:block; margin-top:10px;">$1</b>')
+            .replace(/\n/g, '<br/>')}
+          </div>
 
           <!-- SIGNATURES & THUMBPRINTS SECTION -->
-          <div style="page-break-inside: avoid;">
-            <!-- GUARANTOR THUMBPRINTS -->
-            <table style="width:100%; border-collapse:collapse; margin-top:40px;">
+          <div style="page-break-inside: avoid; margin-top:30px;">
+            <table style="width:100%; border-collapse:collapse;">
               <tr>
-                <td style="width:50%; text-align:center; padding:10px;">
-                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
-                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                <td style="width:25%; text-align:center; padding:2px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:75px; height:45px;">
+                    <tr><td style="width:75px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0;">Guarantor 1 Thumb</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0;">Guarantor 1 Thumb</p>
                 </td>
-                <td style="width:50%; text-align:center; padding:10px;">
-                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
-                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                <td style="width:25%; text-align:center; padding:2px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:75px; height:45px;">
+                    <tr><td style="width:75px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0;">Guarantor 2 Thumb</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0;">Guarantor 2 Thumb</p>
                 </td>
-              </tr>
-            </table>
-
-            <!-- CUSTOMER & COMPANY SIGNATURE -->
-            <table style="width:100%; border-collapse:collapse; margin-top:30px;">
-              <tr>
-                <td style="width:50%; text-align:center; padding:10px;">
-                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:120px; height:70px;">
-                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                <td style="width:25%; text-align:center; padding:2px;">
+                  <table style="margin:0 auto; border:2px solid #1B2A4A; width:75px; height:45px;">
+                    <tr><td style="width:75px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Customer Signature &amp; Thumb</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Customer Sig &amp; Thumb</p>
                 </td>
-                <td style="width:50%; text-align:center; padding:10px;">
-                  <table style="margin:0 auto; width:120px; height:70px;">
-                    <tr><td style="width:120px; height:70px;">&nbsp;</td></tr>
+                <td style="width:25%; text-align:center; padding:2px;">
+                  <table style="margin:0 auto; width:100px; height:45px;">
+                    <tr><td style="width:100px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:11px; font-weight:bold; text-transform:uppercase; margin:8px 0 0 0; border-top:2px solid #1B2A4A; padding-top:6px;">Company Stamp &amp; Signature</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Company Stamp &amp; Sig</p>
                 </td>
               </tr>
             </table>

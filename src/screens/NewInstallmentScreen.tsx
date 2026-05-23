@@ -28,9 +28,11 @@ export default function NewInstallmentScreen() {
   const [downPayment, setDownPayment] = useState(planToEdit?.downPayment.toString() || '');
   const [tenure, setTenure] = useState(planToEdit?.tenure.toString() || '');
   const [guarantor1Name, setGuarantor1Name] = useState(planToEdit?.guarantor1Name || '');
+  const [guarantor1FatherName, setGuarantor1FatherName] = useState(planToEdit?.guarantor1FatherName || '');
   const [guarantor1Cnic, setGuarantor1Cnic] = useState(planToEdit?.guarantor1Cnic || '');
   const [guarantor1Phone, setGuarantor1Phone] = useState(planToEdit?.guarantor1Phone || '');
   const [guarantor2Name, setGuarantor2Name] = useState(planToEdit?.guarantor2Name || '');
+  const [guarantor2FatherName, setGuarantor2FatherName] = useState(planToEdit?.guarantor2FatherName || '');
   const [guarantor2Cnic, setGuarantor2Cnic] = useState(planToEdit?.guarantor2Cnic || '');
   const [guarantor2Phone, setGuarantor2Phone] = useState(planToEdit?.guarantor2Phone || '');
   const [startDate, setStartDate] = useState(planToEdit?.startDate || todayISO());
@@ -245,9 +247,11 @@ export default function NewInstallmentScreen() {
           productModel,
           productSerial,
           guarantor1Name,
+          guarantor1FatherName,
           guarantor1Cnic,
           guarantor1Phone,
           guarantor2Name,
+          guarantor2FatherName,
           guarantor2Cnic,
           guarantor2Phone,
           productPrice: parseFloat(productPrice) || 0,
@@ -285,9 +289,11 @@ export default function NewInstallmentScreen() {
           productModel,
           productSerial,
           guarantor1Name,
+          guarantor1FatherName,
           guarantor1Cnic,
           guarantor1Phone,
           guarantor2Name,
+          guarantor2FatherName,
           guarantor2Cnic,
           guarantor2Phone,
           productPrice: parseFloat(productPrice) || 0,
@@ -382,18 +388,6 @@ export default function NewInstallmentScreen() {
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Model (Optional)</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="e.g. SM-S921B" value={productModel} onChangeText={setProductModel} />
-            </View>
-          </View>
-          <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Serial Number (Optional)</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="e.g. IMEI or SN" value={productSerial} onChangeText={setProductSerial} />
-            </View>
-          </View>
-          <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs }}>
               <Text style={CommonStyles.inputLabel}>Product Variants</Text>
               <TouchableOpacity onPress={addVariant} style={styles.addSmallBtn}>
@@ -455,6 +449,12 @@ export default function NewInstallmentScreen() {
             </View>
           </View>
           <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Father Name</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput style={CommonStyles.inputText} placeholder="Father Name" value={guarantor1FatherName} onChangeText={setGuarantor1FatherName} />
+            </View>
+          </View>
+          <View style={styles.inputGroup}>
             <Text style={CommonStyles.inputLabel}>CNIC</Text>
             <View style={CommonStyles.inputContainer}>
               <TextInput style={CommonStyles.inputText} placeholder="00000-0000000-0" value={guarantor1Cnic} onChangeText={setGuarantor1Cnic} keyboardType="numeric" />
@@ -510,6 +510,12 @@ export default function NewInstallmentScreen() {
             <Text style={CommonStyles.inputLabel}>Name</Text>
             <View style={CommonStyles.inputContainer}>
               <TextInput style={CommonStyles.inputText} placeholder="Full Name" value={guarantor2Name} onChangeText={setGuarantor2Name} />
+            </View>
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Father Name</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput style={CommonStyles.inputText} placeholder="Father Name" value={guarantor2FatherName} onChangeText={setGuarantor2FatherName} />
             </View>
           </View>
           <View style={styles.inputGroup}>

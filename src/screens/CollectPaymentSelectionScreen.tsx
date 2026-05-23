@@ -80,6 +80,7 @@ export default function CollectPaymentSelectionScreen() {
               onPress={(client) => {
                 navigation.navigate('ClientPaymentScreen', { client });
               }}
+              onLongPress={() => {}}
             />
           )}
           refreshControl={

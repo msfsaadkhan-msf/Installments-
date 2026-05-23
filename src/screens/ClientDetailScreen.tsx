@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Linking, Alert, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Linking, Alert, Image, Modal, TextInput } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from '../theme';
 import Header from '../components/Header';
 import InstallmentCard from '../components/InstallmentCard';
-import { getInstallments } from '../services/storage';
+import { getInstallments, updateInstallment } from '../services/storage';
 import { Client, Installment, InstallmentStatus } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
 
@@ -16,6 +16,8 @@ export default function ClientDetailScreen() {
 
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [editingDueDatePlan, setEditingDueDatePlan] = useState<Installment | null>(null);
+  const [newDueDate, setNewDueDate] = useState('');
 
   const loadInstallments = async () => {
     if (!client) return;
@@ -33,6 +35,19 @@ export default function ClientDetailScreen() {
       loadInstallments();
     }, [client])
   );
+
+  const handleSaveDueDate = async () => {
+    if (!editingDueDatePlan || !newDueDate) return;
+    try {
+      const updatedPlan = { ...editingDueDatePlan, nextDueDate: newDueDate };
+      await updateInstallment(updatedPlan);
+      setEditingDueDatePlan(null);
+      loadInstallments();
+      Alert.alert('Success', 'Next due date updated successfully.');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update due date.');
+    }
+  };
 
   if (!client) {
     return (
@@ -178,6 +193,10 @@ export default function ClientDetailScreen() {
               onPress={(installment) => {
                 navigation.navigate('InstallmentDetailScreen', { installment });
               }} 
+              onEditDueDate={(installment) => {
+                setEditingDueDatePlan(installment);
+                setNewDueDate(installment.nextDueDate);
+              }}
               onCollectPayment={(installment) => {
                 navigation.navigate('RecordPaymentScreen', { installment });
               }}
@@ -216,6 +235,43 @@ export default function ClientDetailScreen() {
               resizeMode="contain"
             />
           )}
+        </View>
+      </Modal>
+
+      {/* Edit Due Date Modal */}
+      <Modal
+        visible={!!editingDueDatePlan}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setEditingDueDatePlan(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editDateModalContent}>
+            <Text style={styles.editDateModalTitle}>Edit Next Due Date</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput 
+                style={[CommonStyles.inputText, { color: Colors.textPrimary }]}
+                value={newDueDate}
+                onChangeText={setNewDueDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+            <View style={styles.editDateModalActions}>
+              <TouchableOpacity 
+                style={[styles.editDateModalBtn, styles.editDateModalBtnCancel]} 
+                onPress={() => setEditingDueDatePlan(null)}
+              >
+                <Text style={styles.editDateModalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.editDateModalBtn, styles.editDateModalBtnSave]} 
+                onPress={handleSaveDueDate}
+              >
+                <Text style={styles.editDateModalBtnTextSave}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </View>
@@ -369,5 +425,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: Radius.full,
     zIndex: 5,
+  },
+  editDateModalContent: {
+    backgroundColor: Colors.surface,
+    padding: Spacing.xl,
+    borderRadius: Radius.lg,
+    width: '85%',
+    ...Shadows.md,
+  },
+  editDateModalTitle: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.lg,
+    color: Colors.primary,
+    marginBottom: Spacing.md,
+  },
+  editDateModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  editDateModalBtn: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+  },
+  editDateModalBtnCancel: {
+    backgroundColor: Colors.surfaceAlt,
+  },
+  editDateModalBtnSave: {
+    backgroundColor: Colors.primary,
+  },
+  editDateModalBtnTextCancel: {
+    fontFamily: Fonts.medium,
+    color: Colors.textPrimary,
+  },
+  editDateModalBtnTextSave: {
+    fontFamily: Fonts.bold,
+    color: Colors.surface,
   },
 });

@@ -53,6 +53,7 @@ function InstallmentsStack() {
       <Stack.Screen name="NewAgreement" component={AgreementFormScreen} />
       <Stack.Screen name="InstallmentDetailScreen" component={InstallmentDetailScreen} />
       <Stack.Screen name="RecordPaymentScreen" component={RecordPaymentScreen} />
+      <Stack.Screen name="NewInstallmentScreen" component={NewInstallmentScreen} />
     </Stack.Navigator>
   );
 }

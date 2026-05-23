@@ -11,6 +11,7 @@ interface InstallmentCardProps {
   installment: Installment;
   onPress: (item: Installment) => void;
   onLongPress?: (item: Installment) => void;
+  onEditDueDate?: (item: Installment) => void;
   showClientName?: boolean;
   onCollectPayment?: (item: Installment) => void;
   onViewAgreement?: (item: Installment) => void;
@@ -21,6 +22,7 @@ export default function InstallmentCard({
   installment, 
   onPress, 
   onLongPress,
+  onEditDueDate,
   showClientName = false, 
   onCollectPayment, 
   onViewAgreement, 
@@ -76,7 +78,13 @@ export default function InstallmentCard({
           <Text style={styles.progressDetail}>
             Paid {installment.paidInstallments + (installment.downPayment > 0 ? 0 : 0)} of {installment.tenure} months
           </Text>
-          <Text style={styles.dueDate}>Next: {formatDateSlash(installment.nextDueDate)}</Text>
+          <TouchableOpacity 
+            activeOpacity={0.7} 
+            onPress={() => onEditDueDate ? onEditDueDate(installment) : (onLongPress && onLongPress(installment))}
+            onLongPress={() => onEditDueDate ? onEditDueDate(installment) : (onLongPress && onLongPress(installment))}
+          >
+            <Text style={styles.dueDate}>Next: {formatDateSlash(installment.nextDueDate)}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 

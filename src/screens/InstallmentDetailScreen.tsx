@@ -325,6 +325,7 @@ export default function InstallmentDetailScreen() {
         <Text style={CommonStyles.sectionTitle}>Plan Information</Text>
         <View style={styles.infoCard}>
           <Text style={styles.modalSectionTitle}>Financials</Text>
+          <InfoRow label="Start Date" value={currentInst.startDate ? formatDateSlash(currentInst.startDate) : '-'} />
           <InfoRow label="Product Price" value={currentInst.productPrice ? formatPKR(currentInst.productPrice) : '-'} />
           <InfoRow label="Markup Percentage" value={currentInst.productPercentage ? currentInst.productPercentage + '%' : '-'} />
           <InfoRow label="Total Product Value" value={formatPKR(currentInst.totalAmount)} />
@@ -371,6 +372,7 @@ export default function InstallmentDetailScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalSectionTitle}>Guarantor 1</Text>
               <InfoRow label="Name" value={currentInst.guarantor1Name || 'N/A'} />
+              <InfoRow label="Father Name" value={currentInst.guarantor1FatherName || 'N/A'} />
               <InfoRow label="CNIC" value={currentInst.guarantor1Cnic || 'N/A'} />
               <InfoRow label="Phone" value={currentInst.guarantor1Phone || 'N/A'} />
               <InfoRow label="Address" value={currentInst.guarantor1Address || 'N/A'} />
@@ -392,6 +394,7 @@ export default function InstallmentDetailScreen() {
 
               <Text style={[styles.modalSectionTitle, { marginTop: Spacing.md }]}>Guarantor 2</Text>
               <InfoRow label="Name" value={currentInst.guarantor2Name || 'N/A'} />
+              <InfoRow label="Father Name" value={currentInst.guarantor2FatherName || 'N/A'} />
               <InfoRow label="CNIC" value={currentInst.guarantor2Cnic || 'N/A'} />
               <InfoRow label="Phone" value={currentInst.guarantor2Phone || 'N/A'} />
               <InfoRow label="Address" value={currentInst.guarantor2Address || 'N/A'} />
