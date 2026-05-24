@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState';
 import { getInstallments, getClients, getCurrencySetting, deleteInstallment, syncFromCloud } from '../services/storage';
 import { Installment, InstallmentStatus, Client } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
+import AdComponent from '../components/AdComponent';
 
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All' },
@@ -202,6 +203,8 @@ export default function InstallmentsScreen() {
             />
           }
         />
+        
+        <AdComponent />
       </View>
     </View>
   );

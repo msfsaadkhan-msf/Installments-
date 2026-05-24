@@ -27,6 +27,8 @@ import {
   saveBiometricSetting,
 } from '../services/storage';
 import { BusinessProfile } from '../types';
+import AdComponent from '../components/AdComponent';
+import UpgradeModal from '../components/UpgradeModal';
 
 const CURRENCIES = [
   'PKR (₨)', 'USD ($)', 'EUR (€)', 'GBP (£)', 'SAR (﷼)', 'AED (د.إ)', 'INR (₹)', 'BDT (৳)', 'TRY (₺)', 'CAD ($)', 'AUD ($)'
@@ -64,9 +66,20 @@ export default function SettingsScreen() {
   const [backupProgress, setBackupProgress] = useState<string | null>(null);
   const { signIn: googleSignIn } = useGoogleAuth();
 
+  // Subscription State
+  const [subStatus, setSubStatus] = useState<any>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   useEffect(() => {
     loadSettings();
+    loadSubscription();
   }, []);
+
+  const loadSubscription = async () => {
+    const { getSubscriptionStatus } = require('../services/subscriptionService');
+    const status = await getSubscriptionStatus();
+    setSubStatus(status);
+  };
 
   const loadSettings = async () => {
     const isBioHardware = await LocalAuthentication.hasHardwareAsync();
@@ -321,6 +334,22 @@ export default function SettingsScreen() {
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
+        {subStatus && !subStatus.isPro && (
+          <TouchableOpacity 
+            style={styles.upgradeHeaderCard} 
+            onPress={() => setShowUpgradeModal(true)}
+          >
+            <View style={styles.upgradeHeaderInfo}>
+              <MaterialCommunityIcons name="crown" size={24} color={Colors.accent} />
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.upgradeHeaderText}>Upgrade to Pro</Text>
+                <Text style={styles.upgradeHeaderSub}>Unlock unlimited clients & plans</Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.accent} />
+          </TouchableOpacity>
+        )}
+
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -372,6 +401,10 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
                 onPress={async () => {
+                  if (!subStatus?.isPro) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
                   setBackupProgress('Starting backup...');
                   const result = await backupToGoogleDrive((status) => setBackupProgress(status));
                   setBackupProgress(null);
@@ -386,12 +419,17 @@ export default function SettingsScreen() {
                 <View style={styles.optionIcon}>
                   <MaterialCommunityIcons name="cloud-upload" size={22} color={Colors.primary} />
                 </View>
-                <Text style={styles.optionLabel}>{backupProgress || 'Upload Backup to Drive'}</Text>
+                <Text style={styles.optionLabel}>Upload Backup to Drive</Text>
+                {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
                 {backupProgress ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />}
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
                 onPress={async () => {
+                  if (!subStatus?.isPro) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
                   Alert.alert('Restore from Drive', 'This will overwrite ALL current local data with the latest backup from your Google Drive. Continue?', [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Restore', style: 'destructive', onPress: async () => {
@@ -419,6 +457,7 @@ export default function SettingsScreen() {
                   <MaterialCommunityIcons name="cloud-download" size={22} color={Colors.primary} />
                 </View>
                 <Text style={styles.optionLabel}>Restore from Drive</Text>
+                {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
                 <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
               </TouchableOpacity>
               <TouchableOpacity
@@ -443,6 +482,10 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={styles.optionRow}
               onPress={async () => {
+                if (!subStatus?.isPro) {
+                  setShowUpgradeModal(true);
+                  return;
+                }
                 const result = await googleSignIn();
                 if (result.success) {
                   const gUser = await getStoredGoogleUser();
@@ -457,6 +500,7 @@ export default function SettingsScreen() {
                 <MaterialCommunityIcons name="google-drive" size={22} color={Colors.primary} />
               </View>
               <Text style={styles.optionLabel}>Connect Google Drive</Text>
+              {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
               <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
@@ -472,6 +516,8 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
+
+        <AdComponent />
 
         {/* Currency Modal */}
         <Modal visible={showCurrencyModal} transparent={true} animationType="slide">
@@ -684,6 +730,12 @@ export default function SettingsScreen() {
 
       </ScrollView>
 
+      <UpgradeModal 
+        visible={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        onSuccess={loadSubscription}
+      />
+
       <Modal visible={cameraVisible} animationType="slide">
         <CustomCamera 
           overlayType="avatar"
@@ -816,15 +868,67 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
   },
   modalContent: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    padding: Spacing.lg,
-    maxHeight: '70%',
+    borderRadius: Radius.xl,
+    padding: 0,
+    width: '100%',
+    maxHeight: '90%',
+    ...Shadows.lg,
+    overflow: 'hidden',
+  },
+  upgradeCard: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xl,
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    width: '100%',
+    ...Shadows.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '40',
+  },
+  upgradeTitle: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.xl,
+    color: Colors.accent,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  upgradeDesc: {
+    fontFamily: Fonts.medium,
+    fontSize: FontSizes.base,
+    color: Colors.surface,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xxl,
+    opacity: 0.9,
+  },
+  upgradeBtn: {
+    backgroundColor: Colors.accent,
+    width: '100%',
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  upgradeBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.md,
+    color: Colors.primary,
+  },
+  maybeLaterBtn: {
+    paddingVertical: Spacing.sm,
+  },
+  maybeLaterText: {
+    fontFamily: Fonts.medium,
+    fontSize: FontSizes.sm,
+    color: 'rgba(255,255,255,0.6)',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1003,5 +1107,32 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     color: Colors.textMuted,
     marginTop: 8,
+  },
+  upgradeHeaderCard: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '60',
+    ...Shadows.md,
+  },
+  upgradeHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  upgradeHeaderText: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.base,
+    color: Colors.accent,
+  },
+  upgradeHeaderSub: {
+    fontFamily: Fonts.regular,
+    fontSize: 10,
+    color: Colors.accentLight,
+    opacity: 0.8,
   },
 });

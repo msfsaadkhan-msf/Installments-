@@ -207,6 +207,26 @@ export default function NewInstallmentScreen() {
     setLoading(true);
 
     try {
+      // Feature Gate: Plan Limit per Client
+      const { getSubscriptionStatus } = require('../services/subscriptionService');
+      const { getInstallments } = require('../services/storage');
+      const status = await getSubscriptionStatus();
+      const installments = await getInstallments();
+      const currentPlans = installments.filter((i: any) => i.clientId === preSelectedClient.id).length;
+
+      if (!status.isPro && currentPlans >= status.maxPlansPerClient && !planToEdit) {
+        setLoading(false);
+        Alert.alert(
+          'Plan Limit Reached',
+          `Standard accounts are limited to ${status.maxPlansPerClient} installment plans per client. Upgrade to Pro for unlimited plans and premium features.`,
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Upgrade Now', onPress: () => Alert.alert('Upgrade', 'Payment integration coming soon.') }
+          ]
+        );
+        return;
+      }
+
       const clientName = preSelectedClient.name;
 
       let finalG1Front = g1CnicFront;

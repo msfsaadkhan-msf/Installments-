@@ -10,6 +10,7 @@ import { Payment } from '../types';
 import { formatPKR } from '../utils/currency';
 import { getInstallments } from '../services/storage';
 import { InstallmentStatus } from '../types';
+import AdComponent from '../components/AdComponent';
 
 export default function ReportsScreen() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -140,6 +141,7 @@ export default function ReportsScreen() {
           )}
         </View>
 
+        <AdComponent />
       </ScrollView>
     </View>
   );

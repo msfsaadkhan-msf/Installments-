@@ -17,6 +17,7 @@ import { Installment, Payment, InstallmentStatus } from '../types';
 import { formatPKR, calcProgress } from '../utils/currency';
 import { formatDateSlash } from '../utils/date';
 import { generateAgreementPDF } from '../services/pdfService';
+import AdComponent from '../components/AdComponent';
 
 export default function InstallmentDetailScreen() {
   const navigation = useNavigation<any>();
@@ -258,6 +259,10 @@ export default function InstallmentDetailScreen() {
               await deletePayment(payment.id);
               await loadPayments();
               Alert.alert('Success', 'Payment deleted and balance updated.');
+              
+              // Trigger Interstitial Ad for Free users
+              const { showInterstitial } = require('../services/adService');
+              showInterstitial();
             } catch (e) {
               Alert.alert('Error', 'Failed to delete payment');
             }
@@ -408,6 +413,7 @@ export default function InstallmentDetailScreen() {
           </View>
         )}
 
+        <AdComponent />
       </ScrollView>
 
       {/* Details Modal */}

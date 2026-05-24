@@ -9,6 +9,7 @@ import ClientCard from '../components/ClientCard';
 import EmptyState from '../components/EmptyState';
 import { getClients, deleteClient, syncFromCloud } from '../services/storage';
 import { Client } from '../types';
+import AdComponent from '../components/AdComponent';
 
 export default function ClientsScreen() {
   const navigation = useNavigation<any>();
@@ -139,6 +140,8 @@ export default function ClientsScreen() {
             />
           }
         />
+        
+        <AdComponent />
 
         <TouchableOpacity 
           style={styles.fab}

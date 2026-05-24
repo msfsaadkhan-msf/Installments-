@@ -10,6 +10,7 @@ import { Client, Installment, InstallmentStatus } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
+import AdComponent from '../components/AdComponent';
 
 export default function ClientDetailScreen() {
   const navigation = useNavigation<any>();
@@ -260,6 +261,7 @@ export default function ClientDetailScreen() {
           </View>
         )}
 
+        <AdComponent />
       </ScrollView>
 
       {/* Image Viewer Modal */}

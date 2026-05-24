@@ -20,6 +20,7 @@ export interface User {
   phone: string;
   role: 'admin' | 'collector';
   avatar?: string;
+  isLifetimePro?: boolean;
 }
 
 export interface Client {

@@ -243,6 +243,11 @@ export async function saveClients(clients: Client[]): Promise<void> {
   await setJSON(KEYS.CLIENTS, clients);
 }
 
+export async function getClientCount(): Promise<number> {
+  const clients = await getClients();
+  return clients.length;
+}
+
 export async function addClient(client: Client): Promise<void> {
   const clients = await getClients();
   clients.unshift(client);

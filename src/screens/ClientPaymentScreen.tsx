@@ -157,6 +157,34 @@ export default function ClientPaymentScreen() {
     }
   };
 
+  const handleReceiptAction = async (type: 'whatsapp' | 'print') => {
+    const { getSubscriptionStatus } = require('../services/subscriptionService');
+    const status = await getSubscriptionStatus();
+
+    if (!status.isPro && !status.canAccessReceipts) {
+      Alert.alert(
+        'Pro Feature',
+        'WhatsApp and Print receipts are exclusive to Pro members. Upgrade to unlock premium receipt features.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: () => Alert.alert('Upgrade', 'Payment integration coming soon.') }
+        ]
+      );
+      return;
+    }
+
+    if (type === 'whatsapp') {
+      const allPayments = await getPayments();
+      await generateWhatsAppReceipt(successData.installmentsAffected, allPayments, client.phone);
+    } else {
+      await generateAndPrintReceipt(
+        client.name, 
+        successData.createdPayments, 
+        successData.installmentsAffected
+      );
+    }
+  };
+
   return (
     <View style={CommonStyles.screen}>
       <Header title="Collect Payment (All)" showBack />
@@ -268,10 +296,7 @@ export default function ClientPaymentScreen() {
 
             <TouchableOpacity 
               style={[CommonStyles.buttonPrimary, { backgroundColor: '#25D366', marginBottom: Spacing.sm, width: '100%', flexDirection: 'row', justifyContent: 'center' }]}
-              onPress={async () => {
-                 const allPayments = await getPayments();
-                 await generateWhatsAppReceipt(successData.installmentsAffected, allPayments, client.phone);
-              }}
+              onPress={() => handleReceiptAction('whatsapp')}
             >
               <MaterialCommunityIcons name="whatsapp" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={CommonStyles.buttonPrimaryText}>Send WhatsApp Details</Text>
@@ -279,15 +304,7 @@ export default function ClientPaymentScreen() {
 
             <TouchableOpacity 
               style={[CommonStyles.buttonOutline, { marginBottom: Spacing.lg, width: '100%', flexDirection: 'row', justifyContent: 'center' }]}
-              onPress={async () => {
-                if (successData) {
-                  await generateAndPrintReceipt(
-                    client.name, 
-                    successData.createdPayments, 
-                    successData.installmentsAffected
-                  );
-                }
-              }}
+              onPress={() => handleReceiptAction('print')}
             >
               <MaterialCommunityIcons name="printer" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
               <Text style={CommonStyles.buttonOutlineText}>Print Receipt</Text>

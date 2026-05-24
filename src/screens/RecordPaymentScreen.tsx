@@ -28,10 +28,17 @@ export default function RecordPaymentScreen() {
   const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
   const [notes, setNotes] = useState(paymentToEdit?.notes || '');
 
+  const [subStatus, setSubStatus] = useState<any>(null);
+
   React.useEffect(() => {
     (async () => {
-      const c = await getCurrencySetting();
+      const { getSubscriptionStatus } = require('../services/subscriptionService');
+      const [c, s] = await Promise.all([
+        getCurrencySetting(),
+        getSubscriptionStatus()
+      ]);
       setCurrency(c);
+      setSubStatus(s);
     })();
   }, []);
 
@@ -99,9 +106,48 @@ export default function RecordPaymentScreen() {
       });
       setLoading(false);
       setShowSuccess(true);
+      
+      // Trigger Interstitial Ad for Free users
+      const { showInterstitial } = require('../services/adService');
+      showInterstitial();
     } catch (error) {
       Alert.alert('Error', 'Failed to save payment.');
       setLoading(false);
+    }
+  };
+
+  const handleReceiptAction = async (action: 'whatsapp' | 'print') => {
+    if (!subStatus?.canAccessReceipts) {
+      Alert.alert(
+        'Pro Feature',
+        'Sharing and printing receipts is a Pro feature. Upgrade to enable professional receipt management.',
+        [
+          { text: 'Maybe Later', style: 'cancel' },
+          { text: 'Upgrade Now', onPress: () => Alert.alert('Upgrade', 'Payment integration coming soon.') }
+        ]
+      );
+      return;
+    }
+
+    if (action === 'whatsapp') {
+      const allPayments = await getPayments();
+      let clientPhone = '';
+      const clients = await getClients();
+      const c = clients.find(c => c.id === installment?.clientId);
+      if (c) clientPhone = c.phone;
+      await generateWhatsAppReceipt([successData.updatedInstallment], allPayments, clientPhone);
+    } else {
+      const currentPayment: Payment = {
+        id: generateId(),
+        installmentId: installment.id,
+        clientName: installment.clientName,
+        productName: installment.productName,
+        amount: parseFloat(amount),
+        date: paymentDate,
+        receiptNo: receiptNo,
+        method,
+      };
+      await generateAndPrintReceipt(installment.clientName, [currentPayment], [successData.updatedInstallment]);
     }
   };
 
@@ -230,15 +276,7 @@ export default function RecordPaymentScreen() {
 
             <TouchableOpacity 
               style={[CommonStyles.buttonPrimary, { backgroundColor: '#25D366', marginBottom: Spacing.sm, width: '100%', flexDirection: 'row', justifyContent: 'center' }]}
-              onPress={async () => {
-                 const allPayments = await getPayments();
-                 let clientPhone = '';
-                 const clients = await getClients();
-                 const c = clients.find(c => c.id === installment?.clientId);
-                 if (c) clientPhone = c.phone;
-                 
-                 await generateWhatsAppReceipt([successData.updatedInstallment], allPayments, clientPhone);
-              }}
+              onPress={() => handleReceiptAction('whatsapp')}
             >
               <MaterialCommunityIcons name="whatsapp" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={CommonStyles.buttonPrimaryText}>Send WhatsApp Receipt</Text>
@@ -246,19 +284,7 @@ export default function RecordPaymentScreen() {
 
             <TouchableOpacity 
               style={[CommonStyles.buttonOutline, { marginBottom: Spacing.lg, width: '100%', flexDirection: 'row', justifyContent: 'center' }]}
-              onPress={async () => {
-                const currentPayment: Payment = {
-                  id: generateId(), // This isn't perfect but for printing it works if we don't have the ID handy
-                  installmentId: installment.id,
-                  clientName: installment.clientName,
-                  productName: installment.productName,
-                  amount: parseFloat(amount),
-                  date: paymentDate,
-                  receiptNo: receiptNo,
-                  method,
-                };
-                await generateAndPrintReceipt(installment.clientName, [currentPayment], [successData.updatedInstallment]);
-              }}
+              onPress={() => handleReceiptAction('print')}
             >
               <MaterialCommunityIcons name="printer" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
               <Text style={CommonStyles.buttonOutlineText}>Print Receipt</Text>

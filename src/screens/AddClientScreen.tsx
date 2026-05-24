@@ -73,6 +73,8 @@ export default function AddClientScreen() {
     setCameraVisible(false);
   };
 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const handleSave = async () => {
     if (!name || !phone || !cnic || !address) {
       Alert.alert('Error', 'Please fill all required fields');
@@ -82,6 +84,19 @@ export default function AddClientScreen() {
     setLoading(true);
 
     try {
+      if (!clientToEdit) {
+        const { getSubscriptionStatus, checkClientLimit } = require('../services/subscriptionService');
+        const { getClientCount } = require('../services/storage');
+        const status = await getSubscriptionStatus();
+        const currentCount = await getClientCount();
+        
+        if (!checkClientLimit(currentCount, status)) {
+          setLoading(false);
+          setShowUpgradeModal(true);
+          return;
+        }
+      }
+
       let finalProfile = profileImage;
       let finalFront = cnicFront;
       let finalBack = cnicBack;
@@ -317,6 +332,36 @@ export default function AddClientScreen() {
 
       </ScrollView>
 
+      <Modal visible={showUpgradeModal} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.upgradeCard}>
+            <MaterialCommunityIcons name="crown" size={60} color={Colors.accent} />
+            <Text style={styles.upgradeTitle}>Client Limit Reached</Text>
+            <Text style={styles.upgradeDesc}>
+              The free version is limited to 20 clients. Upgrade to Pro for unlimited clients, cloud sync, and an ad-free experience.
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.upgradeBtn}
+              onPress={() => {
+                setShowUpgradeModal(false);
+                // In a real app, navigate to UpgradeScreen
+                Alert.alert('Upgrade', 'Upgrade feature implementation coming soon in next step.');
+              }}
+            >
+              <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.maybeLaterBtn}
+              onPress={() => setShowUpgradeModal(false)}
+            >
+              <Text style={styles.maybeLaterText}>Maybe Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={cameraVisible} animationType="slide">
         <CustomCamera 
           overlayType={cameraOverlay}
@@ -403,5 +448,60 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     color: Colors.textMuted,
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  upgradeCard: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xl,
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    width: '100%',
+    ...Shadows.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '40',
+  },
+  upgradeTitle: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.xl,
+    color: Colors.accent,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  upgradeDesc: {
+    fontFamily: Fonts.medium,
+    fontSize: FontSizes.base,
+    color: Colors.surface,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xxl,
+    opacity: 0.9,
+  },
+  upgradeBtn: {
+    backgroundColor: Colors.accent,
+    width: '100%',
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  upgradeBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.md,
+    color: Colors.primary,
+  },
+  maybeLaterBtn: {
+    paddingVertical: Spacing.sm,
+  },
+  maybeLaterText: {
+    fontFamily: Fonts.medium,
+    fontSize: FontSizes.sm,
+    color: 'rgba(255,255,255,0.6)',
   },
 });

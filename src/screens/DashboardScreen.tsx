@@ -14,6 +14,8 @@ import { getGreeting } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
 import { scheduleOverdueCheckNotification } from '../services/notificationService';
 import { initializeStorage } from '../services/mediaService';
+import AdComponent from '../components/AdComponent';
+import UpgradeModal from '../components/UpgradeModal';
 
 const { width } = Dimensions.get('window');
 
@@ -36,16 +38,20 @@ export default function DashboardScreen() {
   });
   const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
   const [currency, setCurrency] = useState('PKR (₨)');
+  const [subStatus, setSubStatus] = useState<any>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const loadData = async () => {
     try {
-      const [allClients, allInstallments, allPayments, currentCurrency] = await Promise.all([
+      const [allClients, allInstallments, allPayments, currentCurrency, subscriptionStatus] = await Promise.all([
         getClients(),
         getInstallments(),
         getPayments(),
-        getCurrencySetting()
+        getCurrencySetting(),
+        (require('../services/subscriptionService')).getSubscriptionStatus()
       ]);
       setCurrency(currentCurrency);
+      setSubStatus(subscriptionStatus);
 
       const now = new Date();
       const currentMonth = now.getMonth();
@@ -271,8 +277,29 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {subStatus && !subStatus.isPro && (
+          <TouchableOpacity 
+            style={styles.upgradeHeaderCard} 
+            onPress={() => setShowUpgradeModal(true)}
+          >
+            <View style={styles.upgradeHeaderInfo}>
+              <MaterialCommunityIcons name="crown" size={24} color={Colors.accent} />
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.upgradeHeaderText}>Upgrade to Pro</Text>
+                <Text style={styles.upgradeHeaderSub}>Unlock unlimited clients & plans</Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.accent} />
+          </TouchableOpacity>
+        )}
 
+        <AdComponent />
 
+        <UpgradeModal 
+          visible={showUpgradeModal} 
+          onClose={() => setShowUpgradeModal(false)}
+          onSuccess={loadData}
+        />
 
       </ScrollView>
     </View>
@@ -527,5 +554,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: Spacing.md,
+  },
+  upgradeHeaderCard: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '60',
+    ...Shadows.md,
+  },
+  upgradeHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  upgradeHeaderText: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.base,
+    color: Colors.accent,
+  },
+  upgradeHeaderSub: {
+    fontFamily: Fonts.regular,
+    fontSize: 10,
+    color: Colors.accentLight,
+    opacity: 0.8,
   },
 });

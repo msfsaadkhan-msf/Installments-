@@ -16,6 +16,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { requestNotificationPermissions } from './src/services/notificationService';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { Platform } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +34,17 @@ export default function App() {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
       requestNotificationPermissions();
+
+      // Initialize RevenueCat
+      try {
+        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+        const rcApiKey = 'test_Zr3t24NpUrJMNunMMASmhAM953bFGeLXzN7';
+        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+          Purchases.configure({ apiKey: rcApiKey });
+        }
+      } catch (e) {
+        console.warn('RevenueCat error:', e);
+      }
     }
   }, [fontsLoaded]);
 
