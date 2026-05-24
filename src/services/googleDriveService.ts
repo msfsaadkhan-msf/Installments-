@@ -35,8 +35,8 @@ export function useGoogleAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     scopes: SCOPES,
-    // Use the EXACT URL whitelisted in Google Cloud Console
-    redirectUri: 'https://auth.expo.io/@msfsaadkhan-msf/installment',
+    // Use automatic redirection to ensure session state is correctly tracked by the Expo Proxy
+    redirectUri: AuthSession.makeRedirectUri(),
   });
 
   const signIn = async (): Promise<{ success: boolean; error?: string }> => {
