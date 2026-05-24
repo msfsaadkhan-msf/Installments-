@@ -5,9 +5,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from '../theme';
 import Header from '../components/Header';
 import InstallmentCard from '../components/InstallmentCard';
-import { getInstallments, updateInstallment } from '../services/storage';
+import { getInstallments, updateClient, updateInstallment } from '../services/storage';
 import { Client, Installment, InstallmentStatus } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export default function ClientDetailScreen() {
   const navigation = useNavigation<any>();
@@ -28,6 +30,53 @@ export default function ClientDetailScreen() {
     } catch (e) {
       console.error('Failed to load client installments', e);
     }
+  };
+
+  const handleDownloadImage = async () => {
+    if (!viewingImage) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow photo access to save this image.');
+        return;
+      }
+      
+      let localUri = viewingImage;
+      if (viewingImage.startsWith('data:image')) {
+        localUri = FileSystem.documentDirectory + 'download_' + Date.now() + '.jpg';
+        const base64Data = viewingImage.split(',')[1];
+        await FileSystem.writeAsStringAsync(localUri, base64Data, { encoding: 'base64' });
+      }
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('Success', 'Image saved to your gallery!');
+    } catch (e) {
+      console.error('Download error', e);
+      Alert.alert('Error', 'Failed to save image.');
+    }
+  };
+
+  const handleDeleteImage = () => {
+    if (!viewingImage || !client) return;
+    Alert.alert('Confirm Delete', 'Are you sure you want to permanently delete this media? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          const updated = { ...client };
+          if (updated.profileImage === viewingImage) {
+            updated.profileImage = undefined;
+          }
+          await updateClient(updated);
+          setViewingImage(null);
+          navigation.goBack();
+          setTimeout(() => {
+            navigation.navigate('ClientDetailScreen', { client: updated });
+          }, 100);
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete image');
+        }
+      }}
+    ]);
   };
 
   useFocusEffect(
@@ -221,12 +270,17 @@ export default function ClientDetailScreen() {
         onRequestClose={() => setViewingImage(null)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalCloseBtn} 
-            onPress={() => setViewingImage(null)}
-          >
-            <MaterialCommunityIcons name="close" size={30} color={Colors.surface} />
-          </TouchableOpacity>
+          <View style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ marginRight: 15, backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={handleDownloadImage}>
+               <MaterialCommunityIcons name="download" size={24} color={Colors.surface} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginRight: 15, backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={handleDeleteImage}>
+               <MaterialCommunityIcons name="delete" size={24} color={Colors.danger} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={() => setViewingImage(null)}>
+               <MaterialCommunityIcons name="close" size={24} color={Colors.surface} />
+            </TouchableOpacity>
+          </View>
           
           {viewingImage && (
             <Image 

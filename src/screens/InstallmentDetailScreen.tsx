@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Alert, 
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from '../theme';
 import Header from '../components/Header';
@@ -446,12 +448,17 @@ export default function InstallmentDetailScreen() {
         onRequestClose={() => setViewingImage(null)}
       >
         <View style={styles.imageViewerOverlay}>
-          <TouchableOpacity 
-            style={styles.imageViewerClose} 
-            onPress={() => setViewingImage(null)}
-          >
-            <MaterialCommunityIcons name="close" size={30} color={Colors.surface} />
-          </TouchableOpacity>
+          <View style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ marginRight: 15, backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={handleDownloadImage}>
+               <MaterialCommunityIcons name="download" size={24} color={Colors.surface} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginRight: 15, backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={handleDeleteImage}>
+               <MaterialCommunityIcons name="delete" size={24} color={Colors.danger} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 25 }} onPress={() => setViewingImage(null)}>
+               <MaterialCommunityIcons name="close" size={24} color={Colors.surface} />
+            </TouchableOpacity>
+          </View>
           {viewingImage && (
             <Image 
               source={{ uri: viewingImage }} 
