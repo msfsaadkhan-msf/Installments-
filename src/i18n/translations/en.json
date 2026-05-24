@@ -1,0 +1,83 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "ok": "OK",
+    "not_supported": "Not Supported",
+    "permission_denied": "Permission Denied"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "clients": "Clients",
+    "installments": "Installments",
+    "reports": "Reports",
+    "settings": "Settings",
+    "profile": "Profile",
+    "operations": "OPERATIONS",
+    "management": "MANAGEMENT",
+    "collect_payment": "Collect Payment",
+    "add_new_client": "Add New Client",
+    "new_agreement": "New Agreement / Plan",
+    "business_profile": "Business Profile",
+    "app_settings": "App Settings"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "total_clients": "Total Clients",
+    "active_plans": "Active Plans",
+    "collected_today": "Collected Today",
+    "pending_dues": "Pending Dues",
+    "quick_actions": "Quick Actions",
+    "recent_activity": "Recent Activity"
+  },
+  "settings": {
+    "preferences": "PREFERENCES",
+    "data_management": "DATA MANAGEMENT",
+    "google_drive": "GOOGLE DRIVE BACKUP",
+    "about": "ABOUT",
+    "language": "Language",
+    "currency": "Currency",
+    "biometric": "Enable Biometric Login",
+    "real_time_alerts": "Real-time Payment Alerts",
+    "daily_overdue": "Daily Overdue Summary (12 AM)",
+    "import_db": "Import Database",
+    "export_db": "Export Database",
+    "connect_drive": "Connect Google Drive",
+    "disconnect_drive": "Disconnect Google Account",
+    "upload_backup": "Upload Backup to Drive",
+    "restore_drive": "Restore from Drive",
+    "app_version": "App Version",
+    "tos": "Terms of Service",
+    "developed_by": "Software by MSF Digital Solutions",
+    "suggest_update": "Suggest an Update"
+  },
+  "receipt": {
+    "payment_record": "PAYMENT RECORD",
+    "client_details": "CLIENT DETAILS",
+    "product_plan": "PRODUCT & PLAN",
+    "payment_ledger": "PAYMENT LEDGER",
+    "remaining_bal": "Remaining Bal",
+    "next_due": "Next Due Date",
+    "verified": "Verified Receipt",
+    "signature": "Authorized Signature / Stamp"
+  },
+  "whatsapp": {
+    "record_title": "📋 Installment Payment Record",
+    "customer": "Customer",
+    "product": "Product",
+    "total_price": "💰 Total Price",
+    "advance_paid": "💵 Advance Paid",
+    "monthly": "📆 Monthly Installment",
+    "remaining": "📉 Remaining Balance",
+    "completed": "🎉 Congratulations! Plan Completed."
+  }
+}

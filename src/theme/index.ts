@@ -95,10 +95,6 @@ export const Shadows = {
   },
 };
 
-export const formatCurrency = (amount: number, currency: string) => {
-  const symbol = currency.match(/\((.*)\)/)?.[1] || 'Rs';
-  return `${symbol} ${amount.toLocaleString()}`;
-};
 
 // ─── Common Styles ────────────────────────────────────
 export const CommonStyles = StyleSheet.create({

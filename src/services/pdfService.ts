@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import { Installment, Client } from '../types';
-import { formatCurrency } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import { formatDateSlash } from '../utils/date';
 import { getBusinessProfile, getCurrencySetting, getAgreementTerms } from './storage';
 

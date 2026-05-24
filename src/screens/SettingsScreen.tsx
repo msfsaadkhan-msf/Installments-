@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Switch, TextInput, ActivityIndicator, Image, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Switch, TextInput, ActivityIndicator, Image, SafeAreaView, KeyboardAvoidingView, Platform, I18nManager } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -29,15 +29,24 @@ import {
 import { BusinessProfile } from '../types';
 import AdComponent from '../components/AdComponent';
 import UpgradeModal from '../components/UpgradeModal';
+import SuggestionModal from '../components/SuggestionModal';
+import { useTranslation } from 'react-i18next';
+import { LANGUAGE_KEY, setLanguage } from '../i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+// Note: expo-updates not installed; restart prompt handled via manual Alert
 
 const CURRENCIES = [
   'PKR (₨)', 'USD ($)', 'EUR (€)', 'GBP (£)', 'SAR (﷼)', 'AED (د.إ)', 'INR (₹)', 'BDT (৳)', 'TRY (₺)', 'CAD ($)', 'AUD ($)'
 ];
 
 export default function SettingsScreen() {
+  const { t, i18n } = useTranslation();
   const { user, logout, updateProfile } = useAuth();
   const [currency, setCurrency] = useState('PKR (₨)');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [language, setLanguageState] = useState('en');
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const [notifs, setNotifs] = useState<NotificationSettings>({ realTime: true, dailyOverdue: true });
   const [showTerms, setShowTerms] = useState(false);
   const [termsContent, setTermsContent] = useState('');
@@ -110,12 +119,40 @@ export default function SettingsScreen() {
     // Load Google Drive connection status
     const gUser = await getStoredGoogleUser();
     setGDriveUser(gUser);
+
+    // Load Language
+    const lang = await AsyncStorage.getItem(LANGUAGE_KEY);
+    setLanguageState(lang || 'en');
   };
 
   const handleCurrencySelect = async (val: string) => {
     setCurrency(val);
     await saveCurrencySetting(val);
     setShowCurrencyModal(false);
+  };
+
+  const handleLanguageSelect = async (langCode: string) => {
+    setLanguageState(langCode);
+    await setLanguage(langCode);
+    setShowLanguageModal(false);
+    
+    // Alert user about RTL shift requiring app restart
+    const isRTL = langCode === 'ar' || langCode === 'ur';
+    if (I18nManager.isRTL !== isRTL) {
+      Alert.alert(
+        'Restart Required',
+        'Applying language changes and layout direction requires an app restart.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { 
+            text: 'OK', 
+            onPress: () => {
+              Alert.alert('Manual Restart', 'Please close and reopen the app to apply layout changes.');
+            } 
+          }
+        ]
+      );
+    }
   };
 
   const toggleNotif = async (key: keyof NotificationSettings) => {
@@ -366,23 +403,24 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionHeader}>PREFERENCES</Text>
+        <Text style={styles.sectionHeader}>{t('settings.preferences')}</Text>
         <View style={styles.optionsBlock}>
-          <ToggleRow icon="bell-ring-outline" label="Real-time Payment Alerts" value={notifs.realTime} onToggle={() => toggleNotif('realTime')} />
-          <ToggleRow icon="calendar-clock-outline" label="Daily Overdue Summary (12 AM)" value={notifs.dailyOverdue} onToggle={() => toggleNotif('dailyOverdue')} />
+          <ToggleRow icon="bell-ring-outline" label={t('settings.real_time_alerts')} value={notifs.realTime} onToggle={() => toggleNotif('realTime')} />
+          <ToggleRow icon="calendar-clock-outline" label={t('settings.daily_overdue')} value={notifs.dailyOverdue} onToggle={() => toggleNotif('dailyOverdue')} />
           {isBiometricSupported && (
-            <ToggleRow icon="fingerprint" label="Enable Biometric Login" value={biometricEnabled} onToggle={toggleBiometric} />
+            <ToggleRow icon="fingerprint" label={t('settings.biometric')} value={biometricEnabled} onToggle={toggleBiometric} />
           )}
-          <OptionRow icon="currency-usd" label="Currency" rightText={currency} onPress={() => setShowCurrencyModal(true)} />
+          <OptionRow icon="translate" label={t('settings.language')} rightText={language === 'en' ? 'English' : language === 'ur' ? 'اردو' : 'العربية'} onPress={() => setShowLanguageModal(true)} />
+          <OptionRow icon="currency-usd" label={t('settings.currency')} rightText={currency} onPress={() => setShowCurrencyModal(true)} />
         </View>
 
-        <Text style={styles.sectionHeader}>DATA MANAGEMENT</Text>
+        <Text style={styles.sectionHeader}>{t('settings.data_management')}</Text>
         <View style={styles.optionsBlock}>
-          <OptionRow icon="database-import" label="Import Database" onPress={handleImport} />
-          <OptionRow icon="database-export" label="Export Database" onPress={handleExport} />
+          <OptionRow icon="database-import" label={t('settings.import_db')} onPress={handleImport} />
+          <OptionRow icon="database-export" label={t('settings.export_db')} onPress={handleExport} />
         </View>
 
-        <Text style={styles.sectionHeader}>GOOGLE DRIVE BACKUP</Text>
+        <Text style={styles.sectionHeader}>{t('settings.google_drive')}</Text>
         <View style={styles.optionsBlock}>
           {gDriveUser ? (
             <>
@@ -506,11 +544,12 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <Text style={styles.sectionHeader}>ABOUT</Text>
+        <Text style={styles.sectionHeader}>{t('settings.about')}</Text>
         <View style={styles.optionsBlock}>
-          <OptionRow icon="information-outline" label="App Version" rightText="1.0.0" showChevron={false} />
-          <OptionRow icon="file-document-outline" label="Terms of Service" onPress={() => setShowTerms(true)} />
-          <OptionRow icon="shield-check-outline" label="Software by MSF Digital Solutions" showChevron={false} />
+          <OptionRow icon="information-outline" label={t('settings.app_version')} rightText="1.1.0" showChevron={false} />
+          <OptionRow icon="lightbulb-outline" label={t('settings.suggest_update')} onPress={() => setShowSuggestionModal(true)} />
+          <OptionRow icon="file-document-outline" label={t('settings.tos')} onPress={() => setShowTerms(true)} />
+          <OptionRow icon="shield-check-outline" label={t('settings.developed_by')} showChevron={false} />
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
@@ -735,6 +774,39 @@ export default function SettingsScreen() {
         onClose={() => setShowUpgradeModal(false)}
         onSuccess={loadSubscription}
       />
+
+      <SuggestionModal 
+        visible={showSuggestionModal}
+        onClose={() => setShowSuggestionModal(false)}
+        userName={user?.name || ''}
+        userPhone={user?.phone || ''}
+      />
+
+      {/* Language Modal */}
+      <Modal visible={showLanguageModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('settings.language')}</Text>
+              <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.currencyItem} onPress={() => handleLanguageSelect('en')}>
+              <Text style={styles.currencyText}>English</Text>
+              {language === 'en' && <MaterialCommunityIcons name="check" size={20} color={Colors.primary} />}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.currencyItem} onPress={() => handleLanguageSelect('ur')}>
+              <Text style={styles.currencyText}>اردو (Urdu)</Text>
+              {language === 'ur' && <MaterialCommunityIcons name="check" size={20} color={Colors.primary} />}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.currencyItem} onPress={() => handleLanguageSelect('ar')}>
+              <Text style={styles.currencyText}>العربية (Arabic)</Text>
+              {language === 'ar' && <MaterialCommunityIcons name="check" size={20} color={Colors.primary} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={cameraVisible} animationType="slide">
         <CustomCamera 

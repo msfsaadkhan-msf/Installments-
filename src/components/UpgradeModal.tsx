@@ -27,10 +27,15 @@ export default function UpgradeModal({ visible, onClose, onSuccess }: UpgradeMod
       const offerings = await Purchases.getOfferings();
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
         setPackages(offerings.current.availablePackages);
+      } else {
+        Alert.alert(
+          'Notice', 
+          'No active plans found. Please ensure Offerings are set to "Current" in the RevenueCat dashboard.'
+        );
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error fetching offerings', e);
-      Alert.alert('Error', 'Could not load subscription details. Please try again later.');
+      Alert.alert('Configuration Error', `Could not load subscription details: ${e.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

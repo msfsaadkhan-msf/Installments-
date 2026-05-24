@@ -1,6 +1,6 @@
-import Purchases from 'react-native-purchases';
 import { Installment } from '../types';
-import { getCurrentUser } from './storage';
+import { auth, db } from './firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 export enum UserTier {
   FREE = 'FREE',
@@ -24,19 +24,24 @@ const FREE_PLAN_PER_CLIENT_LIMIT = 5;
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   try {
     // 1. Check for manual Firestore override (Lifetime Pro)
-    const currentUser = await getCurrentUser();
-    if (currentUser?.isLifetimePro) {
-      return {
-        tier: UserTier.ELITE, // Manual/Lifetime tier
-        isPro: true,
-        canBackup: true,
-        canAddUnlimitedClients: true,
-        canAccessReceipts: true,
-        maxPlansPerClient: 999999,
-        hasAds: false,
-      };
+    const user = auth.currentUser;
+    if (user) {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists() && userDoc.data()?.isLifetimePro) {
+        return {
+          tier: UserTier.ELITE,
+          isPro: true,
+          canBackup: true,
+          canAddUnlimitedClients: true,
+          canAccessReceipts: true,
+          maxPlansPerClient: 999999,
+          hasAds: false,
+        };
+      }
     }
 
+    // 2. Import Purchases dynamically to avoid errors in some environments
+    const Purchases = require('react-native-purchases').default;
 
     // 3. Check for Store subscription via RevenueCat
     const customerInfo = await Purchases.getCustomerInfo();

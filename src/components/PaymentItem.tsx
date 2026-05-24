@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Payment } from '../types';
-import { Colors, Fonts, FontSizes, Shadows, Radius, Spacing, formatCurrency } from '../theme';
+import { Colors, Fonts, FontSizes, Shadows, Radius, Spacing } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import { formatDateSlash } from '../utils/date';
 
 interface PaymentItemProps {

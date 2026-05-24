@@ -5,9 +5,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from '../theme';
 import Header from '../components/Header';
-import { getPayments, syncFromCloud } from '../services/storage';
+import { getPayments, syncFromCloud, getCurrencySetting } from '../services/storage';
 import { Payment } from '../types';
-import { formatPKR } from '../utils/currency';
+import { formatCurrency } from '../utils/currency';
 import { getInstallments } from '../services/storage';
 import { InstallmentStatus } from '../types';
 import AdComponent from '../components/AdComponent';
@@ -19,6 +19,7 @@ export default function ReportsScreen() {
   const [monthlyTarget, setMonthlyTarget] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [currency, setCurrency] = useState('PKR (₨)');
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -29,7 +30,11 @@ export default function ReportsScreen() {
 
   const loadData = async () => {
     try {
-      const allPayments = await getPayments();
+      const [allPayments, cur] = await Promise.all([
+        getPayments(),
+        getCurrencySetting()
+      ]);
+      setCurrency(cur);
       // Sort by date newest first
       const sorted = allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -108,8 +113,8 @@ export default function ReportsScreen() {
 
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Collected in {months[selectedMonth]}</Text>
-          <Text style={styles.summaryValue}>{formatPKR(monthlyTotal)}</Text>
-          <Text style={styles.summarySub}>Expected this month: {formatPKR(monthlyTarget)}</Text>
+          <Text style={styles.summaryValue}>{formatCurrency(monthlyTotal, currency)}</Text>
+          <Text style={styles.summarySub}>Expected this month: {formatCurrency(monthlyTarget, currency)}</Text>
           
           <View style={styles.progressBg}>
             <View style={[styles.progressFill, { width: `${Math.min((monthlyTotal / monthlyTarget) * 100, 100)}%` }]} />
@@ -132,7 +137,7 @@ export default function ReportsScreen() {
               <View key={p.id} style={[styles.tableRow, index % 2 === 0 ? styles.tableRowAlt : null]}>
                 <Text style={[styles.td, { flex: 3 }]} numberOfLines={1}>{formattedDate}</Text>
                 <Text style={[styles.td, { flex: 3 }]} numberOfLines={1}>{p.clientName}</Text>
-                <Text style={[styles.tdAmount, { flex: 3 }]} numberOfLines={1}>{formatPKR(p.amount)}</Text>
+                <Text style={[styles.tdAmount, { flex: 3 }]} numberOfLines={1}>{formatCurrency(p.amount, currency)}</Text>
               </View>
             );
           })}

@@ -11,6 +11,7 @@ import { generateId, todayISO } from '../utils/date';
 import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
 import CustomCamera from '../components/CustomCamera';
 import ContactPicker from '../components/ContactPicker';
+import UpgradeModal from '../components/UpgradeModal';
 
 export default function AddClientScreen() {
   const navigation = useNavigation<any>();
@@ -345,8 +346,7 @@ export default function AddClientScreen() {
               style={styles.upgradeBtn}
               onPress={() => {
                 setShowUpgradeModal(false);
-                // In a real app, navigate to UpgradeScreen
-                Alert.alert('Upgrade', 'Upgrade feature implementation coming soon in next step.');
+                setShowUpgradeModal(true); // Re-triggering for UX clarity or just open it
               }}
             >
               <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
@@ -361,6 +361,11 @@ export default function AddClientScreen() {
           </View>
         </View>
       </Modal>
+
+      <UpgradeModal 
+        visible={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+      />
 
       <Modal visible={cameraVisible} animationType="slide">
         <CustomCamera 

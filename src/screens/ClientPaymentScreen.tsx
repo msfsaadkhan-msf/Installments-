@@ -10,7 +10,7 @@ import { generateAndPrintReceipt } from '../utils/receiptGenerator';
 import { Client, Installment, Payment, PaymentMethod, InstallmentStatus } from '../types';
 import { generateId, todayISO } from '../utils/date';
 import { Picker } from '@react-native-picker/picker';
-import { formatCurrency } from '../theme';
+import { formatCurrency } from '../utils/currency';
 
 export default function ClientPaymentScreen() {
   const navigation = useNavigation<any>();

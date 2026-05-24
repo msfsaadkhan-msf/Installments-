@@ -5,12 +5,14 @@ import { addPayment, updatePayment, updateInstallment, getPayments, getClients, 
 import { generateWhatsAppReceipt } from '../utils/whatsappGenerator';
 import { generateAndPrintReceipt } from '../utils/receiptGenerator';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, formatCurrency } from '../theme';
+import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import Header from '../components/Header';
 import { Installment, Payment, PaymentMethod, InstallmentStatus } from '../types';
 import { generateId, todayISO } from '../utils/date';
 import { Picker } from '@react-native-picker/picker';
 import { sendImmediatePaymentNotification } from '../services/notificationService';
+import UpgradeModal from '../components/UpgradeModal';
 
 export default function RecordPaymentScreen() {
   const navigation = useNavigation<any>();
@@ -27,6 +29,7 @@ export default function RecordPaymentScreen() {
   const [currency, setCurrency] = useState('PKR (₨)');
   const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
   const [notes, setNotes] = useState(paymentToEdit?.notes || '');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [subStatus, setSubStatus] = useState<any>(null);
 
@@ -123,7 +126,7 @@ export default function RecordPaymentScreen() {
         'Sharing and printing receipts is a Pro feature. Upgrade to enable professional receipt management.',
         [
           { text: 'Maybe Later', style: 'cancel' },
-          { text: 'Upgrade Now', onPress: () => Alert.alert('Upgrade', 'Payment integration coming soon.') }
+          { text: 'Upgrade Now', onPress: () => setShowUpgradeModal(true) }
         ]
       );
       return;
@@ -302,6 +305,16 @@ export default function RecordPaymentScreen() {
           </View>
         </View>
       </Modal>
+
+      <UpgradeModal 
+        visible={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        onSuccess={async () => {
+          const { getSubscriptionStatus } = require('../services/subscriptionService');
+          const s = await getSubscriptionStatus();
+          setSubStatus(s);
+        }}
+      />
 
     </View>
   );

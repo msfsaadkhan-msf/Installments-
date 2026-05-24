@@ -1,0 +1,83 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجاح",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "ok": "موافق",
+    "not_supported": "غير مدعوم",
+    "permission_denied": "تم رفض الإذن"
+  },
+  "navigation": {
+    "dashboard": "لوحة القيادة",
+    "clients": "العملاء",
+    "installments": "الأقساط",
+    "reports": "التقارير",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "operations": "العمليات",
+    "management": "الإدارة",
+    "collect_payment": "تحصيل الدفع",
+    "add_new_client": "إضافة عميل جديد",
+    "new_agreement": "اتفاقية / خطة جديدة",
+    "business_profile": "ملف العمل",
+    "app_settings": "إعدادات التطبيق"
+  },
+  "dashboard": {
+    "welcome": "مرحباً بعودتك",
+    "total_clients": "إجمالي العملاء",
+    "active_plans": "الخطط النشطة",
+    "collected_today": "المحصل اليوم",
+    "pending_dues": "المستحقات المعلقة",
+    "quick_actions": "إجراءات سريعة",
+    "recent_activity": "النشاط الأخير"
+  },
+  "settings": {
+    "preferences": "التفضيلات",
+    "data_management": "إدارة البيانات",
+    "google_drive": "نسخ احتياطي جوجل درايف",
+    "about": "حول التطبيق",
+    "language": "اللغة",
+    "currency": "العملة",
+    "biometric": "تمكين تسجيل الدخول بالبصمة",
+    "real_time_alerts": "تنبيهات الدفع الفورية",
+    "daily_overdue": "ملخص المتأخرات اليومي (12 صباحاً)",
+    "import_db": "استيراد قاعدة البيانات",
+    "export_db": "تصدير قاعدة البيانات",
+    "connect_drive": "ربط جوجل درايف",
+    "disconnect_drive": "فصل حساب جوجل",
+    "upload_backup": "رفع النسخة الاحتياطية",
+    "restore_drive": "استعادة من الدرايف",
+    "app_version": "إصدار التطبيق",
+    "tos": "شروط الخدمة",
+    "developed_by": "برمجيات بواسطة MSF Digital Solutions",
+    "suggest_update": "اقتراح تحديث"
+  },
+  "receipt": {
+    "payment_record": "سجل الدفع",
+    "client_details": "تفاصيل العميل",
+    "product_plan": "المنتج والخطة",
+    "payment_ledger": "دفتر الأستاذ للدفع",
+    "remaining_bal": "الرصيد المتبقي",
+    "next_due": "تاريخ الاستحقاق التالي",
+    "verified": "إيصال معتمد",
+    "signature": "التوقيع / الختم المعتمد"
+  },
+  "whatsapp": {
+    "record_title": "📋 سجل دفع الأقساط",
+    "customer": "العميل",
+    "product": "المنتج",
+    "total_price": "💰 السعر الإجمالي",
+    "advance_paid": "💵 العربون المدفوع",
+    "monthly": "📆 القسط الشهري",
+    "remaining": "📉 الرصيد المتبقي",
+    "completed": "🎉 تهانينا! اكتملت الخطة."
+  }
+}

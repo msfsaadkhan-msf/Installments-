@@ -1,25 +1,26 @@
 /**
- * Format a number as PKR currency string
- * e.g. 25000 → "₨ 25,000"
+ * Format a number as currency string based on selected currency
+ * e.g. (25000, "PKR (₨)") → "₨ 25,000"
  */
-export function formatPKR(amount: number): string {
-  const formatted = amount.toLocaleString('en-PK', {
+export function formatCurrency(amount: number, currency: string = 'PKR (₨)'): string {
+  const symbol = currency.match(/\((.*)\)/)?.[1] || '₨';
+  const formatted = amount.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
-  return `₨ ${formatted}`;
+  return `${symbol} ${formatted}`;
 }
 
 /**
- * Format a number as PKR with decimal places
- * e.g. 25000.50 → "₨ 25,000.50"
+ * Format a number as currency with decimal places
  */
-export function formatPKRDecimal(amount: number): string {
-  const formatted = amount.toLocaleString('en-PK', {
+export function formatCurrencyDecimal(amount: number, currency: string = 'PKR (₨)'): string {
+  const symbol = currency.match(/\((.*)\)/)?.[1] || '₨';
+  const formatted = amount.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return `₨ ${formatted}`;
+  return `${symbol} ${formatted}`;
 }
 
 /**

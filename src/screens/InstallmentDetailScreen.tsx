@@ -10,11 +10,11 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
 import PaymentItem from '../components/PaymentItem';
-import { getPayments, deletePayment, updateInstallment, isBiometricEnabled, getInstallments } from '../services/storage';
+import { getPayments, deletePayment, updateInstallment, isBiometricEnabled, getInstallments, getCurrencySetting } from '../services/storage';
 import { pickOrCaptureImage, saveOrganizedImage } from '../services/mediaService';
 import { useAuth } from '../context/AuthContext';
 import { Installment, Payment, InstallmentStatus } from '../types';
-import { formatPKR, calcProgress } from '../utils/currency';
+import { formatCurrency, calcProgress } from '../utils/currency';
 import { formatDateSlash } from '../utils/date';
 import { generateAgreementPDF } from '../services/pdfService';
 import AdComponent from '../components/AdComponent';
@@ -40,12 +40,16 @@ export default function InstallmentDetailScreen() {
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [currentInst, setCurrentInst] = useState<Installment | null>(installment || null);
+  const [currency, setCurrency] = useState('PKR (₨)');
 
   const loadPayments = async () => {
     if (!currentInst) return;
     try {
-      // Refresh installment data as well
-      const allInsts = await getInstallments();
+      const [allInsts, cur] = await Promise.all([
+        getInstallments(),
+        getCurrencySetting()
+      ]);
+      setCurrency(cur);
       const updatedInst = allInsts.find(i => i.id === currentInst.id);
       if (updatedInst) setCurrentInst(updatedInst);
 
@@ -226,7 +230,7 @@ export default function InstallmentDetailScreen() {
   const handleLongPressPayment = (payment: Payment) => {
     Alert.alert(
       'Payment Action',
-      `Choose an action for payment of ${formatPKR(payment.amount)}`,
+      `Choose an action for payment of ${formatCurrency(payment.amount, currency)}`,
       [
         {
           text: 'Edit Payment',
@@ -313,7 +317,7 @@ export default function InstallmentDetailScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Price</Text>
-              <Text style={styles.statValue}>{currentInst.productPrice ? formatPKR(currentInst.productPrice) : '-'}</Text>
+              <Text style={styles.statValue}>{currentInst.productPrice ? formatCurrency(currentInst.productPrice, currency) : '-'}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Markup</Text>
@@ -321,18 +325,18 @@ export default function InstallmentDetailScreen() {
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Total</Text>
-              <Text style={styles.statValue}>{formatPKR(currentInst.totalAmount)}</Text>
+              <Text style={styles.statValue}>{formatCurrency(currentInst.totalAmount, currency)}</Text>
             </View>
           </View>
 
           <View style={[styles.statsGrid, { marginTop: Spacing.sm }]}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Paid</Text>
-              <Text style={[styles.statValue, { color: Colors.success }]}>{formatPKR(currentInst.paidAmount)}</Text>
+              <Text style={[styles.statValue, { color: Colors.success }]}>{formatCurrency(currentInst.paidAmount, currency)}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Remaining</Text>
-              <Text style={[styles.statValue, { color: Colors.danger }]}>{formatPKR(currentInst.remainingAmount)}</Text>
+              <Text style={[styles.statValue, { color: Colors.danger }]}>{formatCurrency(currentInst.remainingAmount, currency)}</Text>
             </View>
           </View>
         </View>
@@ -387,14 +391,14 @@ export default function InstallmentDetailScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.modalSectionTitle}>Financials</Text>
           <InfoRow label="Start Date" value={currentInst.startDate ? formatDateSlash(currentInst.startDate) : '-'} />
-          <InfoRow label="Product Price" value={currentInst.productPrice ? formatPKR(currentInst.productPrice) : '-'} />
+          <InfoRow label="Product Price" value={currentInst.productPrice ? formatCurrency(currentInst.productPrice, currency) : '-'} />
           <InfoRow label="Markup Percentage" value={currentInst.productPercentage ? currentInst.productPercentage + '%' : '-'} />
-          <InfoRow label="Total Product Value" value={formatPKR(currentInst.totalAmount)} />
-          <InfoRow label="Down Payment" value={formatPKR(currentInst.downPayment)} />
-          <InfoRow label="Financed Amount" value={formatPKR(currentInst.financedAmount)} />
-          <InfoRow label="Monthly Installment" value={formatPKR(currentInst.monthlyAmount)} />
+          <InfoRow label="Total Product Value" value={formatCurrency(currentInst.totalAmount, currency)} />
+          <InfoRow label="Down Payment" value={formatCurrency(currentInst.downPayment, currency)} />
+          <InfoRow label="Financed Amount" value={formatCurrency(currentInst.financedAmount, currency)} />
+          <InfoRow label="Monthly Installment" value={formatCurrency(currentInst.monthlyAmount, currency)} />
           <InfoRow label="Tenure" value={currentInst.tenure + ' Months'} />
-          <InfoRow label="Remaining Amount" value={formatPKR(currentInst.remainingAmount)} noBorder />
+          <InfoRow label="Remaining Amount" value={formatCurrency(currentInst.remainingAmount, currency)} noBorder />
         </View>
 
         {/* Payment History */}

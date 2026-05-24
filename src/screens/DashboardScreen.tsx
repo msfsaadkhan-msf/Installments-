@@ -9,19 +9,21 @@ import KPICard from '../components/KPICard';
 import PaymentItem from '../components/PaymentItem';
 import { getClients, getInstallments, getPayments, getCurrencySetting, syncFromCloud } from '../services/storage';
 import { DashboardStats, Payment, InstallmentStatus } from '../types';
-import { formatCurrency } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import { getGreeting } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
 import { scheduleOverdueCheckNotification } from '../services/notificationService';
 import { initializeStorage } from '../services/mediaService';
 import AdComponent from '../components/AdComponent';
 import UpgradeModal from '../components/UpgradeModal';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen() {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({

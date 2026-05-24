@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import './src/i18n'; // Initialize i18n translations
 import { registerRootComponent } from 'expo';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';

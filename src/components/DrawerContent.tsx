@@ -5,9 +5,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Fonts, FontSizes, Spacing, Radius, Shadows } from '../theme';
+import { useTranslation } from 'react-i18next';
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
 
   const navigateTo = (screen: string, params?: any) => {
     props.navigation.navigate('MainTabs', { screen, params });
@@ -48,9 +50,9 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
         {/* Operations Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>OPERATIONS</Text>
+          <Text style={styles.sectionHeader}>{t('navigation.operations')}</Text>
           <DrawerItem
-            label="Dashboard Overview"
+            label={t('navigation.dashboard')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "view-dashboard" : "view-dashboard-outline"} 
@@ -65,7 +67,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             activeBackgroundColor={Colors.accent + '15'}
           />
           <DrawerItem
-            label="Collect Payment"
+            label={t('navigation.collect_payment')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "cash-register" : "cash-register"} 
@@ -80,7 +82,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             activeBackgroundColor={Colors.accent + '15'}
           />
           <DrawerItem
-            label="Add New Client"
+            label={t('navigation.add_new_client')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "account-plus" : "account-plus-outline"} 
@@ -95,7 +97,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             activeBackgroundColor={Colors.accent + '15'}
           />
           <DrawerItem
-            label="New Agreement / Plan"
+            label={t('navigation.new_agreement')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "file-document-edit" : "file-document-edit-outline"} 
@@ -115,9 +117,9 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
 
         {/* Management Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>MANAGEMENT</Text>
+          <Text style={styles.sectionHeader}>{t('navigation.management')}</Text>
           <DrawerItem
-            label="Reports & Analytics"
+            label={t('navigation.reports')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "chart-areaspline" : "chart-line"} 
@@ -132,7 +134,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             activeBackgroundColor={Colors.accent + '15'}
           />
           <DrawerItem
-            label="Business Profile"
+            label={t('navigation.business_profile')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "store" : "store-outline"} 
@@ -147,7 +149,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             activeBackgroundColor={Colors.accent + '15'}
           />
           <DrawerItem
-            label="App Settings"
+            label={t('navigation.app_settings')}
             icon={({ focused, color, size }) => (
               <MaterialCommunityIcons 
                 name={focused ? "cog" : "cog-outline"} 

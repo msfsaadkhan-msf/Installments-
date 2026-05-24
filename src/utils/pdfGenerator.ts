@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { getBusinessProfile, getAgreementTerms, getCurrencySetting } from '../services/storage';
-import { formatCurrency } from '../theme';
+import { formatCurrency } from '../utils/currency';
 
 export interface AgreementData {
   clientName: string;

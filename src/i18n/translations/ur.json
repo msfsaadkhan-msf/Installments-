@@ -1,0 +1,83 @@
+{
+  "common": {
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ کریں",
+    "delete": "حذف کریں",
+    "edit": "ترمیم کریں",
+    "search": "تلاش کریں",
+    "loading": "لوڈنگ ہو رہی ہے...",
+    "error": "غلطی",
+    "success": "کامیابی",
+    "back": "پیچھے",
+    "next": "اگلا",
+    "submit": "جمع کرائیں",
+    "ok": "ٹھیک ہے",
+    "not_supported": "سپورٹڈ نہیں ہے",
+    "permission_denied": "اجازت نہیں ملی"
+  },
+  "navigation": {
+    "dashboard": "ڈیش بورڈ",
+    "clients": "کلائنٹس",
+    "installments": "اقساط",
+    "reports": "رپورٹس",
+    "settings": "ترتیبات",
+    "profile": "پروفائل",
+    "operations": "آپریشنز",
+    "management": "انتظامیہ",
+    "collect_payment": "ادائیگی وصول کریں",
+    "add_new_client": "نیا کلائنٹ شامل کریں",
+    "new_agreement": "نیا معاہدہ / پلان",
+    "business_profile": "بزنس پروفائل",
+    "app_settings": "ایپ کی ترتیبات"
+  },
+  "dashboard": {
+    "welcome": "خوش آمدید",
+    "total_clients": "کل کلائنٹس",
+    "active_plans": "فعال پلانز",
+    "collected_today": "آج کی وصولی",
+    "pending_dues": "بقایا واجبات",
+    "quick_actions": "فوری اقدامات",
+    "recent_activity": "حالیہ سرگرمی"
+  },
+  "settings": {
+    "preferences": "ترجیحات",
+    "data_management": "ڈیٹا مینجمنٹ",
+    "google_drive": "گوگل ڈرائیو بیک اپ",
+    "about": "ہمارے بارے میں",
+    "language": "زبان",
+    "currency": "کرنسی",
+    "biometric": "بایومیٹرک لاگ ان فعال کریں",
+    "real_time_alerts": "رئیل ٹائم ادائیگی کے الرٹس",
+    "daily_overdue": "روزانہ واجب الادا خلاصہ (12 AM)",
+    "import_db": "ڈیٹا بیس امپورٹ کریں",
+    "export_db": "ڈیٹا بیس ایکسپورٹ کریں",
+    "connect_drive": "گوگل ڈرائیو منسلک کریں",
+    "disconnect_drive": "گوگل اکاؤنٹ منقطع کریں",
+    "upload_backup": "بیک اپ ڈرائیو پر اپ لوڈ کریں",
+    "restore_drive": "ڈرائیو سے ری اسٹور کریں",
+    "app_version": "ایپ کا ورژن",
+    "tos": "سروس کی شرائط",
+    "developed_by": "سافٹ ویئر بذریعہ MSF ڈیجیٹل سلوشنز",
+    "suggest_update": "اپ ڈیٹ تجویز کریں"
+  },
+  "receipt": {
+    "payment_record": "ادائیگی کا ریکارڈ",
+    "client_details": "کلائنٹ کی تفصیلات",
+    "product_plan": "پروڈکٹ اور پلان",
+    "payment_ledger": "ادائیگی کا لیجر",
+    "remaining_bal": "بقیہ رقم",
+    "next_due": "اگلی تاریخ",
+    "verified": "تصدیق شدہ رسید",
+    "signature": "مجاز دستخط / مہر"
+  },
+  "whatsapp": {
+    "record_title": "📋 قسط کی ادائیگی کا ریکارڈ",
+    "customer": "گاہک",
+    "product": "پروڈکٹ",
+    "total_price": "💰 کل قیمت",
+    "advance_paid": "💵 ایڈوانس ادائیگی",
+    "monthly": "📆 ماہانہ قسط",
+    "remaining": "📉 بقیہ رقم",
+    "completed": "🎉 مبارک ہو! پلان مکمل ہو گیا۔"
+  }
+}

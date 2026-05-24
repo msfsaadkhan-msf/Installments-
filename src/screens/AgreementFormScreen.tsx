@@ -20,6 +20,9 @@ import { addClient, addInstallment } from '../services/storage';
 import { generateId, todayISO } from '../utils/date';
 import { Client, InstallmentStatus } from '../types';
 import ContactPicker from '../components/ContactPicker';
+import UpgradeModal from '../components/UpgradeModal';
+import { getSubscriptionStatus } from '../services/subscriptionService';
+import { getInstallments, getCurrencySetting } from '../services/storage';
 
 export default function AgreementFormScreen({ navigation }: any) {
   const [formData, setFormData] = useState<AgreementData>({
@@ -56,6 +59,18 @@ export default function AgreementFormScreen({ navigation }: any) {
   const [g2CnicFront, setG2CnicFront] = useState<string | null>(null);
   const [g2CnicBack, setG2CnicBack] = useState<string | null>(null);
   const [productPhoto, setProductPhoto] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
+  const [currency, setCurrency] = useState('PKR (₨)');
+  const [currencySymbol, setCurrencySymbol] = useState('₨');
+
+  React.useEffect(() => {
+    getCurrencySetting().then(cur => {
+      setCurrency(cur);
+      const symbol = cur.match(/\((.*)\)/)?.[1] || '₨';
+      setCurrencySymbol(symbol);
+    });
+  }, []);
 
   const pickImage = async (field: string) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -104,6 +119,19 @@ export default function AgreementFormScreen({ navigation }: any) {
   };
 
   const handleSubmit = async () => {
+    // Check subscription status
+    const status = await getSubscriptionStatus();
+    const allInstallments = await getInstallments();
+    
+    // Check if this client already has plans (checking by name as proxy)
+    const clientPlans = allInstallments.filter(i => i.clientName === formData.clientName);
+    
+    if (clientPlans.length >= status.maxPlansPerClient) {
+      setUpgradeReason('You have reached the limit of plans for this client. Upgrade to Pro for unlimited plans.');
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const clientId = generateId();
     if (formData.clientName && formData.clientPhone) {
       try {
@@ -369,13 +397,13 @@ export default function AgreementFormScreen({ navigation }: any) {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Financial Summary</Text>
-            {renderInput('Total Price (PKR)', 'totalPrice', '0', 'numeric', handleCalculate)}
-            {renderInput('Advance Payment (PKR)', 'advancePayment', '0', 'numeric', handleCalculate)}
+            {renderInput(`Total Price (${currencySymbol})`, 'totalPrice', '0', 'numeric', handleCalculate)}
+            {renderInput(`Advance Payment (${currencySymbol})`, 'advancePayment', '0', 'numeric', handleCalculate)}
             {renderInput('Installment Duration (Months)', 'installmentDuration', '12', 'numeric', handleCalculate)}
             
             <View style={styles.autoCalculateBox}>
-              <Text style={styles.autoCalculateBoxText}>Remaining Balance: PKR {formData.remainingBalance || '0'}</Text>
-              <Text style={styles.autoCalculateBoxText}>Monthly Installment: PKR {formData.monthlyInstallment || '0'}</Text>
+              <Text style={styles.autoCalculateBoxText}>Remaining Balance: {currencySymbol} {formData.remainingBalance || '0'}</Text>
+              <Text style={styles.autoCalculateBoxText}>Monthly Installment: {currencySymbol} {formData.monthlyInstallment || '0'}</Text>
             </View>
           </View>
 
@@ -402,6 +430,10 @@ export default function AgreementFormScreen({ navigation }: any) {
             <Text style={styles.submitButtonText}>Generate & Share PDF</Text>
           </TouchableOpacity>
 
+          <UpgradeModal 
+            visible={showUpgradeModal} 
+            onClose={() => setShowUpgradeModal(false)}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

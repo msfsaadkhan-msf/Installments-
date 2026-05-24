@@ -3,7 +3,8 @@ import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert,
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows, formatCurrency } from '../theme';
+import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import CustomCamera from '../components/CustomCamera';
 import ContactPicker from '../components/ContactPicker';
 import Header from '../components/Header';

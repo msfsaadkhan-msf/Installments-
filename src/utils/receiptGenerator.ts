@@ -1,7 +1,7 @@
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getBusinessProfile, getCurrencySetting, getClients, getPayments } from '../services/storage';
-import { formatCurrency } from '../theme';
+import { formatCurrency } from '../utils/currency';
 import { Payment, Installment } from '../types';
 import { formatDateSlash } from './date';
 

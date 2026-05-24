@@ -7,8 +7,9 @@ import { exportBackup } from './storage';
 WebBrowser.maybeCompleteAuthSession();
 
 // ─── Google OAuth Config ──────────────────────────────
-// Using Google's OAuth2 endpoint via Expo Proxy for better multi-device support.
-const GOOGLE_CLIENT_ID = '894359346854-rcd6svv64utf86sj3lslpfo89alhcvsl.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '894359346854-rcd6svv64utf86sj3lslpfo89alhcvsl.apps.googleusercontent.com';
+const ANDROID_CLIENT_ID = '894359346854-7l3dgk48iv260reefgsb96l0mepfb3vu.apps.googleusercontent.com';
+
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
 const GDRIVE_TOKEN_KEY = '@ims_gdrive_token';
@@ -33,10 +34,13 @@ async function getStoredToken(): Promise<string | null> {
 // ─── Sign In ──────────────────────────────────────────
 export function useGoogleAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
+    clientId: WEB_CLIENT_ID,
+    androidClientId: ANDROID_CLIENT_ID,
     scopes: SCOPES,
-    // Use automatic redirection to ensure session state is correctly tracked by the Expo Proxy
-    redirectUri: AuthSession.makeRedirectUri(),
+    // Modern way to handle redirects in Expo 50+
+    redirectUri: AuthSession.makeRedirectUri({
+      scheme: 'installment'
+    }),
   });
 
   const signIn = async (): Promise<{ success: boolean; error?: string }> => {
