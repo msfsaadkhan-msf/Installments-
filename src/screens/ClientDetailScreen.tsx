@@ -296,33 +296,40 @@ export default function ClientDetailScreen() {
       <Modal
         visible={!!editingDueDatePlan}
         transparent={true}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setEditingDueDatePlan(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.editDateModalContent}>
-            <Text style={styles.editDateModalTitle}>Edit Next Due Date</Text>
-            <View style={CommonStyles.inputContainer}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons name="calendar-edit" size={24} color={Colors.accent} />
+              <Text style={styles.editDateModalTitle}>Edit Next Due Date</Text>
+            </View>
+            
+            <Text style={styles.inputLabelSmall}>ENTER DATE (YYYY-MM-DD)</Text>
+            <View style={styles.premiumInputContainer}>
               <TextInput 
-                style={[CommonStyles.inputText, { color: Colors.textPrimary }]}
+                style={styles.premiumInput}
                 value={newDueDate}
                 onChangeText={setNewDueDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={Colors.textMuted}
+                placeholder="2024-05-24"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                keyboardType="default"
               />
             </View>
+
             <View style={styles.editDateModalActions}>
               <TouchableOpacity 
-                style={[styles.editDateModalBtn, styles.editDateModalBtnCancel]} 
+                style={[styles.modalBtn, styles.modalBtnCancel]} 
                 onPress={() => setEditingDueDatePlan(null)}
               >
-                <Text style={styles.editDateModalBtnTextCancel}>Cancel</Text>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.editDateModalBtn, styles.editDateModalBtnSave]} 
+                style={[styles.modalBtn, styles.modalBtnSave]} 
                 onPress={handleSaveDueDate}
               >
-                <Text style={styles.editDateModalBtnTextSave}>Save</Text>
+                <Text style={styles.modalBtnTextSave}>Update Date</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -481,41 +488,76 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   editDateModalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.primary,
     padding: Spacing.xl,
     borderRadius: Radius.lg,
-    width: '85%',
-    ...Shadows.md,
+    width: '90%',
+    borderWidth: 1,
+    borderColor: Colors.accent + '40',
+    ...Shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
   },
   editDateModalTitle: {
     fontFamily: Fonts.bold,
     fontSize: FontSizes.lg,
-    color: Colors.primary,
-    marginBottom: Spacing.md,
+    color: Colors.accent,
+    marginLeft: 10,
+  },
+  inputLabelSmall: {
+    fontFamily: Fonts.bold,
+    fontSize: 10,
+    color: Colors.accentLight,
+    marginBottom: Spacing.xs,
+    letterSpacing: 1,
+  },
+  premiumInputContainer: {
+    backgroundColor: Colors.primaryDark,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.accent + '60',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 4,
+    marginBottom: Spacing.lg,
+  },
+  premiumInput: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.md,
+    color: Colors.surface,
+    height: 50,
   },
   editDateModalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
-  editDateModalBtn: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+  modalBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
     borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
-  editDateModalBtnCancel: {
-    backgroundColor: Colors.surfaceAlt,
+  modalBtnCancel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  editDateModalBtnSave: {
-    backgroundColor: Colors.primary,
+  modalBtnSave: {
+    backgroundColor: Colors.accent,
   },
-  editDateModalBtnTextCancel: {
-    fontFamily: Fonts.medium,
-    color: Colors.textPrimary,
-  },
-  editDateModalBtnTextSave: {
-    fontFamily: Fonts.bold,
+  modalBtnTextCancel: {
+    fontFamily: Fonts.semiBold,
     color: Colors.surface,
+    fontSize: FontSizes.sm,
+  },
+  modalBtnTextSave: {
+    fontFamily: Fonts.bold,
+    color: Colors.primary,
+    fontSize: FontSizes.sm,
   },
 });
