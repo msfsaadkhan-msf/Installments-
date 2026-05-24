@@ -35,7 +35,12 @@ export function useGoogleAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     scopes: SCOPES,
-    // Note: useProxy is true by default when not in a standard environment
+    // Explicitly use the Expo Proxy to ensure the redirect_uri is https://auth.expo.io/...
+    // This is required when using a WEB Client ID on a mobile device.
+    redirectUri: AuthSession.makeRedirectUri({
+      scheme: 'installment',
+      path: 'redirect',
+    }),
   });
 
   const signIn = async (): Promise<{ success: boolean; error?: string }> => {
@@ -44,6 +49,8 @@ export function useGoogleAuth() {
         return { success: false, error: 'Authorization request not ready.' };
       }
 
+      // Explicitly use Proxy to ensure we use the https://auth.expo.io redirect URI
+      // which is mandatory for Web Client IDs.
       const result = await promptAsync();
 
       if (result.type === 'success' && result.authentication?.accessToken) {
