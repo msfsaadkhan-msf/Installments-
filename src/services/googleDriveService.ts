@@ -1,21 +1,15 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { exportBackup } from './storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
 // ─── Google OAuth Config ──────────────────────────────
-// Using Google's OAuth2 endpoint directly — works in Expo Go and EAS builds.
-// Each end-user signs in with their OWN Google account.
+// Using Google's OAuth2 endpoint via Expo Proxy for better multi-device support.
 const GOOGLE_CLIENT_ID = '894359346854-rcd6svv64utf86sj3lslpfo89alhcvsl.apps.googleusercontent.com';
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
-
-const discovery = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
 
 const GDRIVE_TOKEN_KEY = '@ims_gdrive_token';
 const GDRIVE_USER_KEY = '@ims_gdrive_user';
@@ -38,19 +32,19 @@ async function getStoredToken(): Promise<string | null> {
 
 // ─── Sign In ──────────────────────────────────────────
 export function useGoogleAuth() {
-  const redirectUri = AuthSession.makeRedirectUri({ preferLocalhost: false });
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    scopes: SCOPES,
+    // Note: useProxy is true by default when not in a standard environment
+  });
 
   const signIn = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      const authRequest = new AuthSession.AuthRequest({
-        clientId: GOOGLE_CLIENT_ID,
-        scopes: SCOPES,
-        redirectUri,
-        responseType: AuthSession.ResponseType.Token,
-        usePKCE: false,
-      });
+      if (!request) {
+        return { success: false, error: 'Authorization request not ready.' };
+      }
 
-      const result = await authRequest.promptAsync(discovery);
+      const result = await promptAsync();
 
       if (result.type === 'success' && result.authentication?.accessToken) {
         const token = result.authentication.accessToken;
@@ -69,13 +63,13 @@ export function useGoogleAuth() {
         return { success: true };
       }
       
-      return { success: false, error: 'Sign-in was cancelled.' };
+      return { success: false, error: 'Sign-in was cancelled or failed.' };
     } catch (e: any) {
       return { success: false, error: e.message || 'Google Sign-In failed.' };
     }
   };
 
-  return { signIn };
+  return { signIn, requestReady: !!request };
 }
 
 // ─── Sign Out ─────────────────────────────────────────

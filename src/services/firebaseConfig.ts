@@ -1,9 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { 
   initializeAuth, 
-  getReactNativePersistence,
-  // @ts-ignore - Sometimes not exported in web/types but present in RN
-  // @ts-nocheck
+  // @ts-ignore
+  getReactNativePersistence 
 } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeFirestore } from "firebase/firestore";

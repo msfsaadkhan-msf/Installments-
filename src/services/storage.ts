@@ -29,9 +29,7 @@ const LOCAL_KEYS = [
   KEYS.USER,
   KEYS.USERS,
   KEYS.LAST_USER,
-  KEYS.BIOMETRIC,
-  KEYS.CURRENCY,
-  KEYS.NOTIFICATIONS
+  KEYS.BIOMETRIC
 ];
 
 // ─── Generic Helpers ──────────────────────────────────
@@ -50,7 +48,16 @@ export async function syncFromCloud(): Promise<void> {
   const user = auth.currentUser;
   if (!user) return;
 
-  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG, KEYS.TERMS];
+  const CLOUD_KEYS = [
+    KEYS.CLIENTS, 
+    KEYS.INSTALLMENTS, 
+    KEYS.PAYMENTS, 
+    KEYS.INVOICE_CONFIG, 
+    KEYS.TERMS,
+    KEYS.CURRENCY,
+    KEYS.NOTIFICATIONS,
+    KEYS.BUSINESS
+  ];
   
   try {
     for (const key of CLOUD_KEYS) {
@@ -77,7 +84,16 @@ export function startRealtimeSync(): void {
   
   stopRealtimeSync(); // Clear any existing
 
-  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG, KEYS.TERMS];
+  const CLOUD_KEYS = [
+    KEYS.CLIENTS, 
+    KEYS.INSTALLMENTS, 
+    KEYS.PAYMENTS, 
+    KEYS.INVOICE_CONFIG, 
+    KEYS.TERMS,
+    KEYS.CURRENCY,
+    KEYS.NOTIFICATIONS,
+    KEYS.BUSINESS
+  ];
   
   CLOUD_KEYS.forEach(key => {
     const docRef = doc(db, 'users', user.uid, 'appData', key);
