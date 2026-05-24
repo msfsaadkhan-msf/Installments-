@@ -10,6 +10,7 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from
 import Header from '../components/Header';
 import CustomCamera from '../components/CustomCamera';
 import { useAuth } from '../context/AuthContext';
+import { useGoogleAuth, getStoredGoogleUser, signOutGoogle, backupToGoogleDrive, getLatestBackupFromDrive } from '../services/googleDriveService';
 import { 
   getCurrencySetting, 
   saveCurrencySetting, 
@@ -58,6 +59,11 @@ export default function SettingsScreen() {
   const [bizLogo, setBizLogo] = useState<string | null>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
 
+  // Google Drive State
+  const [gDriveUser, setGDriveUser] = useState<{ name: string; email: string } | null>(null);
+  const [backupProgress, setBackupProgress] = useState<string | null>(null);
+  const { signIn: googleSignIn } = useGoogleAuth();
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -87,6 +93,10 @@ export default function SettingsScreen() {
       setBizAddress(b.address || '');
       setBizLogo(b.logo || null);
     }
+
+    // Load Google Drive connection status
+    const gUser = await getStoredGoogleUser();
+    setGDriveUser(gUser);
   };
 
   const handleCurrencySelect = async (val: string) => {
@@ -341,6 +351,115 @@ export default function SettingsScreen() {
         <View style={styles.optionsBlock}>
           <OptionRow icon="database-import" label="Import Database" onPress={handleImport} />
           <OptionRow icon="database-export" label="Export Database" onPress={handleExport} />
+        </View>
+
+        <Text style={styles.sectionHeader}>GOOGLE DRIVE BACKUP</Text>
+        <View style={styles.optionsBlock}>
+          {gDriveUser ? (
+            <>
+              <View style={styles.optionRow}>
+                <View style={styles.optionIcon}>
+                  <MaterialCommunityIcons name="google" size={22} color="#4285F4" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionLabel, { marginBottom: 2 }]}>{gDriveUser.name}</Text>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: FontSizes.xs, color: Colors.textMuted }}>{gDriveUser.email}</Text>
+                </View>
+                <View style={{ backgroundColor: Colors.successLight, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                  <Text style={{ fontFamily: Fonts.semiBold, fontSize: 10, color: Colors.success }}>CONNECTED</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
+                onPress={async () => {
+                  setBackupProgress('Starting backup...');
+                  const result = await backupToGoogleDrive((status) => setBackupProgress(status));
+                  setBackupProgress(null);
+                  if (result.success) {
+                    Alert.alert('\u2705 Backup Complete', 'Your entire database has been safely uploaded to your Google Drive in the "IMS Backup" folder.');
+                  } else {
+                    Alert.alert('Backup Failed', result.error || 'Unknown error.');
+                  }
+                }}
+                disabled={!!backupProgress}
+              >
+                <View style={styles.optionIcon}>
+                  <MaterialCommunityIcons name="cloud-upload" size={22} color={Colors.primary} />
+                </View>
+                <Text style={styles.optionLabel}>{backupProgress || 'Upload Backup to Drive'}</Text>
+                {backupProgress ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
+                onPress={async () => {
+                  Alert.alert('Restore from Drive', 'This will overwrite ALL current local data with the latest backup from your Google Drive. Continue?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Restore', style: 'destructive', onPress: async () => {
+                      setBackupProgress('Downloading backup...');
+                      const result = await getLatestBackupFromDrive();
+                      if (result.success && result.data) {
+                        const importResult = await importBackup(result.data);
+                        setBackupProgress(null);
+                        if (importResult.success) {
+                          Alert.alert('\u2705 Restored', 'Data restored from Google Drive successfully.', [
+                            { text: 'OK', onPress: () => loadSettings() }
+                          ]);
+                        } else {
+                          Alert.alert('Restore Failed', importResult.error || 'Invalid backup data.');
+                        }
+                      } else {
+                        setBackupProgress(null);
+                        Alert.alert('Error', result.error || 'Failed to download backup.');
+                      }
+                    }}
+                  ]);
+                }}
+              >
+                <View style={styles.optionIcon}>
+                  <MaterialCommunityIcons name="cloud-download" size={22} color={Colors.primary} />
+                </View>
+                <Text style={styles.optionLabel}>Restore from Drive</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
+                onPress={() => {
+                  Alert.alert('Disconnect Google', 'This will only remove the connection from this app. Your backups on Google Drive will remain safe.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Disconnect', style: 'destructive', onPress: async () => {
+                      await signOutGoogle();
+                      setGDriveUser(null);
+                    }}
+                  ]);
+                }}
+              >
+                <View style={styles.optionIcon}>
+                  <MaterialCommunityIcons name="link-off" size={22} color={Colors.danger} />
+                </View>
+                <Text style={[styles.optionLabel, { color: Colors.danger }]}>Disconnect Google Account</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={async () => {
+                const result = await googleSignIn();
+                if (result.success) {
+                  const gUser = await getStoredGoogleUser();
+                  setGDriveUser(gUser);
+                  Alert.alert('\u2705 Connected!', 'Your Google account is now linked. You can now upload your database backups to Google Drive.');
+                } else {
+                  Alert.alert('Connection Failed', result.error || 'Could not connect to Google.');
+                }
+              }}
+            >
+              <View style={styles.optionIcon}>
+                <MaterialCommunityIcons name="google-drive" size={22} color={Colors.primary} />
+              </View>
+              <Text style={styles.optionLabel}>Connect Google Drive</Text>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <Text style={styles.sectionHeader}>ABOUT</Text>

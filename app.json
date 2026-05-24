@@ -48,7 +48,8 @@
           "isAccessMediaLocationEnabled": false,
           "audioPermission": "Allow IMS to access audio for media selection."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
