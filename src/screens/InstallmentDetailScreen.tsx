@@ -64,6 +64,60 @@ export default function InstallmentDetailScreen() {
     }
   };
 
+  const handleDownloadImage = async () => {
+    if (!viewingImage) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow photo access to save this image.');
+        return;
+      }
+      
+      let localUri = viewingImage;
+      if (viewingImage.startsWith('data:image')) {
+        localUri = FileSystem.documentDirectory + 'download_' + Date.now() + '.jpg';
+        const base64Data = viewingImage.split(',')[1];
+        await FileSystem.writeAsStringAsync(localUri, base64Data, { encoding: 'base64' });
+      }
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('Success', 'Image saved to your gallery!');
+    } catch (e) {
+      console.error('Download error', e);
+      Alert.alert('Error', 'Failed to save image.');
+    }
+  };
+
+  const handleDeleteImage = () => {
+    if (!viewingImage || !currentInst) return;
+    Alert.alert('Confirm Delete', 'Are you sure you want to permanently delete this media? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          const updated = { ...currentInst };
+          if (updated.productImage === viewingImage) updated.productImage = undefined;
+          if (updated.guarantor1CnicFront === viewingImage) updated.guarantor1CnicFront = undefined;
+          if (updated.guarantor1CnicBack === viewingImage) updated.guarantor1CnicBack = undefined;
+          if (updated.guarantor2CnicFront === viewingImage) updated.guarantor2CnicFront = undefined;
+          if (updated.guarantor2CnicBack === viewingImage) updated.guarantor2CnicBack = undefined;
+          
+          if (updated.productPhotos) {
+            updated.productPhotos = updated.productPhotos.filter(d => d !== viewingImage);
+          }
+          if (updated.privatePhotos) {
+            updated.privatePhotos = updated.privatePhotos.filter(d => d !== viewingImage);
+          }
+
+          await updateInstallment(updated);
+          setCurrentInst(updated);
+          setViewingImage(null);
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete image');
+        }
+      }}
+    ]);
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadPayments();
