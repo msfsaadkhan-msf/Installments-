@@ -2,6 +2,7 @@
   "expo": {
     "name": "installment",
     "slug": "installment",
+    "scheme": "installment",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -45,8 +46,7 @@
         {
           "photosPermission": "Allow IMS to access your photos for client documentation.",
           "savePhotosPermission": "Allow IMS to save agreement forms and client photos to your device.",
-          "isAccessMediaLocationEnabled": false,
-          "audioPermission": "Allow IMS to access audio for media selection."
+          "isAccessMediaLocationEnabled": false
         }
       ],
       "expo-web-browser"
