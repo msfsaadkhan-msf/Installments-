@@ -38,7 +38,7 @@ export default function App() {
       // Initialize RevenueCat
       try {
         Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-        const rcApiKey = 'test_Zr3t24NpUrJMNunMMASmhAM953bFGeLXzN7';
+        const rcApiKey = 'goog_VNZntpUNMwVhQFReFQvCAjvYQJN';
         if (Platform.OS === 'android' || Platform.OS === 'ios') {
           Purchases.configure({ apiKey: rcApiKey });
         }
