@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import ClientCard from '../components/ClientCard';
 import EmptyState from '../components/EmptyState';
-import { getClients, deleteClient } from '../services/storage';
+import { getClients, deleteClient, syncFromCloud } from '../services/storage';
 import { Client } from '../types';
 
 export default function ClientsScreen() {
@@ -52,6 +52,7 @@ export default function ClientsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await syncFromCloud();
     await loadClients();
     setRefreshing(false);
   };

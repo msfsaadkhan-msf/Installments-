@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from '../theme';
 import Header from '../components/Header';
-import { getPayments } from '../services/storage';
+import { getPayments, syncFromCloud } from '../services/storage';
 import { Payment } from '../types';
 import { formatPKR } from '../utils/currency';
 import { getInstallments } from '../services/storage';
@@ -65,6 +65,7 @@ export default function ReportsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await syncFromCloud();
     await loadData();
     setRefreshing(false);
   };

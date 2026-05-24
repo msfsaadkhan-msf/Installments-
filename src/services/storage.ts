@@ -50,7 +50,7 @@ export async function syncFromCloud(): Promise<void> {
   const user = auth.currentUser;
   if (!user) return;
 
-  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG];
+  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG, KEYS.TERMS];
   
   try {
     for (const key of CLOUD_KEYS) {
@@ -64,6 +64,42 @@ export async function syncFromCloud(): Promise<void> {
   } catch (err) {
     console.warn("Failed to sync from cloud during login", err);
   }
+}
+
+// ─── Real-Time Sync (Cross-Device) ────────────────────
+import { onSnapshot, Unsubscribe } from 'firebase/firestore';
+
+let realtimeUnsubscribes: Unsubscribe[] = [];
+
+export function startRealtimeSync(): void {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  stopRealtimeSync(); // Clear any existing
+
+  const CLOUD_KEYS = [KEYS.CLIENTS, KEYS.INSTALLMENTS, KEYS.PAYMENTS, KEYS.INVOICE_CONFIG, KEYS.TERMS];
+  
+  CLOUD_KEYS.forEach(key => {
+    const docRef = doc(db, 'users', user.uid, 'appData', key);
+    const unsub = onSnapshot(docRef, async (snap) => {
+      // Triggers whenever this document changes anywhere (even on this device)
+      if (snap.exists()) {
+        const cloudData = snap.data().data;
+        if (cloudData !== undefined) {
+           await AsyncStorage.setItem(key, JSON.stringify(cloudData));
+        }
+      }
+    }, (error) => {
+      console.warn(`Realtime sync listener failed for ${key}:`, error);
+    });
+    
+    realtimeUnsubscribes.push(unsub);
+  });
+}
+
+export function stopRealtimeSync(): void {
+  realtimeUnsubscribes.forEach(unsub => unsub());
+  realtimeUnsubscribes = [];
 }
 
 // ─── Dirty Key Tracking (Offline Queue) ───────────────

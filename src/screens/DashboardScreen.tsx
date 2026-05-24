@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Fonts, FontSizes, Spacing, Radius, Shadows, CommonStyles } from '../theme';
 import KPICard from '../components/KPICard';
 import PaymentItem from '../components/PaymentItem';
-import { getClients, getInstallments, getPayments, getCurrencySetting } from '../services/storage';
+import { getClients, getInstallments, getPayments, getCurrencySetting, syncFromCloud } from '../services/storage';
 import { DashboardStats, Payment, InstallmentStatus } from '../types';
 import { formatCurrency } from '../theme';
 import { getGreeting } from '../utils/date';
@@ -124,6 +124,7 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await syncFromCloud();
     await loadData();
     setRefreshing(false);
   };

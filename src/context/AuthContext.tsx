@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLastUser, saveLastUser, saveCurrentUser, clearCurrentUser, syncFromCloud, syncDirtyKeys } from '../services/storage';
+import { getLastUser, saveLastUser, saveCurrentUser, clearCurrentUser, syncFromCloud, syncDirtyKeys, startRealtimeSync, stopRealtimeSync } from '../services/storage';
 import NetInfo from '@react-native-community/netinfo';
 
 // ─── State ────────────────────────────────────────────
@@ -74,12 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
              const userData = userDoc.data() as User;
              await syncFromCloud();
              await syncDirtyKeys(); // Push any offline-queued writes
+             startRealtimeSync();
              dispatch({ type: 'LOGIN', payload: userData });
              await saveCurrentUser(userData);
              await saveLastUser(userData);
           }
         }).catch(_err => { /* silently ignore cloud sync failure */ });
       } else {
+        stopRealtimeSync();
         dispatch({ type: 'LOGOUT' });
       }
     });
@@ -111,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'LOGIN', payload: userDoc.data() as User });
       // Push any pending offline writes now that we're online
       syncDirtyKeys().catch(() => {});
+      startRealtimeSync();
       return { success: true };
     } catch (err: any) {
       // ── Offline fallback: let user in using cached credentials ──

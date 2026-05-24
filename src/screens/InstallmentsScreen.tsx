@@ -7,7 +7,7 @@ import SearchBar from '../components/SearchBar';
 import FilterPills from '../components/FilterPills';
 import InstallmentCard from '../components/InstallmentCard';
 import EmptyState from '../components/EmptyState';
-import { getInstallments, getClients, getCurrencySetting, deleteInstallment } from '../services/storage';
+import { getInstallments, getClients, getCurrencySetting, deleteInstallment, syncFromCloud } from '../services/storage';
 import { Installment, InstallmentStatus, Client } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
 
@@ -96,6 +96,7 @@ export default function InstallmentsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await syncFromCloud();
     await loadData();
     setRefreshing(false);
   };
