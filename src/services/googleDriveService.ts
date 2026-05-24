@@ -8,7 +8,7 @@ WebBrowser.maybeCompleteAuthSession();
 // ─── Google OAuth Config ──────────────────────────────
 // Using Google's OAuth2 endpoint directly — works in Expo Go and EAS builds.
 // Each end-user signs in with their OWN Google account.
-const GOOGLE_CLIENT_ID = '894359346854-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '894359346854-rcd6svv64utf86sj3lslpfo89alhcvsl.apps.googleusercontent.com';
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
 const discovery = {

@@ -1,5 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { 
+  initializeAuth, 
+  getReactNativePersistence,
+  // @ts-ignore - Sometimes not exported in web/types but present in RN
+  // @ts-nocheck
+} from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -16,8 +22,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Auth
-const auth = getAuth(app);
+// Initialize Firebase Auth with persistence
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
 
 // Initialize Firestore with long-polling for React Native compatibility
 const db = initializeFirestore(app, {
