@@ -10,7 +10,8 @@ import { Client, Installment, InstallmentStatus } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
-import AdComponent from '../components/AdComponent';
+import { getClientCount, getClients, deleteClient } from '../services/storage';
+// Removed AdComponent import
 
 export default function ClientDetailScreen() {
   const navigation = useNavigation<any>();
@@ -261,7 +262,7 @@ export default function ClientDetailScreen() {
           </View>
         )}
 
-        <AdComponent />
+        {/* Removed AdComponent usage */}
       </ScrollView>
 
       {/* Image Viewer Modal */}
@@ -309,9 +310,9 @@ export default function ClientDetailScreen() {
             </View>
             
             <Text style={styles.inputLabelSmall}>ENTER DATE (YYYY-MM-DD)</Text>
-            <View style={styles.premiumInputContainer}>
+            <View style={styles.standardInputContainer}>
               <TextInput 
-                style={styles.premiumInput}
+                style={styles.standardInput}
                 value={newDueDate}
                 onChangeText={setNewDueDate}
                 placeholder="2024-05-24"
@@ -516,7 +517,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     letterSpacing: 1,
   },
-  premiumInputContainer: {
+  standardInputContainer: {
     backgroundColor: Colors.primaryDark,
     borderRadius: Radius.md,
     borderWidth: 1.5,
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginBottom: Spacing.lg,
   },
-  premiumInput: {
+  standardInput: {
     fontFamily: Fonts.bold,
     fontSize: FontSizes.md,
     color: Colors.surface,

@@ -10,7 +10,7 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from
 import Header from '../components/Header';
 import CustomCamera from '../components/CustomCamera';
 import { useAuth } from '../context/AuthContext';
-import { useGoogleAuth, getStoredGoogleUser, signOutGoogle, backupToGoogleDrive, getLatestBackupFromDrive } from '../services/googleDriveService';
+import { createManualBackup } from '../services/backupService';
 import { 
   getCurrencySetting, 
   saveCurrencySetting, 
@@ -27,8 +27,6 @@ import {
   saveBiometricSetting,
 } from '../services/storage';
 import { BusinessProfile } from '../types';
-import AdComponent from '../components/AdComponent';
-import UpgradeModal from '../components/UpgradeModal';
 import SuggestionModal from '../components/SuggestionModal';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_KEY, setLanguage } from '../i18n';
@@ -49,6 +47,7 @@ export default function SettingsScreen() {
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const [notifs, setNotifs] = useState<NotificationSettings>({ realTime: true, dailyOverdue: true });
   const [showTerms, setShowTerms] = useState(false);
+
   const [termsContent, setTermsContent] = useState('');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -70,25 +69,11 @@ export default function SettingsScreen() {
   const [bizLogo, setBizLogo] = useState<string | null>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
 
-  // Google Drive State
-  const [gDriveUser, setGDriveUser] = useState<{ name: string; email: string } | null>(null);
   const [backupProgress, setBackupProgress] = useState<string | null>(null);
-  const { signIn: googleSignIn } = useGoogleAuth();
-
-  // Subscription State
-  const [subStatus, setSubStatus] = useState<any>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
-    loadSubscription();
   }, []);
-
-  const loadSubscription = async () => {
-    const { getSubscriptionStatus } = require('../services/subscriptionService');
-    const status = await getSubscriptionStatus();
-    setSubStatus(status);
-  };
 
   const loadSettings = async () => {
     const isBioHardware = await LocalAuthentication.hasHardwareAsync();
@@ -115,10 +100,6 @@ export default function SettingsScreen() {
       setBizAddress(b.address || '');
       setBizLogo(b.logo || null);
     }
-
-    // Load Google Drive connection status
-    const gUser = await getStoredGoogleUser();
-    setGDriveUser(gUser);
 
     // Load Language
     const lang = await AsyncStorage.getItem(LANGUAGE_KEY);
@@ -371,21 +352,6 @@ export default function SettingsScreen() {
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {subStatus && !subStatus.isPro && (
-          <TouchableOpacity 
-            style={styles.upgradeHeaderCard} 
-            onPress={() => setShowUpgradeModal(true)}
-          >
-            <View style={styles.upgradeHeaderInfo}>
-              <MaterialCommunityIcons name="crown" size={24} color={Colors.accent} />
-              <View style={{ marginLeft: 12 }}>
-                <Text style={styles.upgradeHeaderText}>Upgrade to Pro</Text>
-                <Text style={styles.upgradeHeaderSub}>Unlock unlimited clients & plans</Text>
-              </View>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.accent} />
-          </TouchableOpacity>
-        )}
 
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
@@ -398,9 +364,7 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{user?.role.toUpperCase()}</Text>
-          </View>
+
         </View>
 
         <Text style={styles.sectionHeader}>{t('settings.preferences')}</Text>
@@ -422,126 +386,38 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionHeader}>{t('settings.google_drive')}</Text>
         <View style={styles.optionsBlock}>
-          {gDriveUser ? (
-            <>
-              <View style={styles.optionRow}>
-                <View style={styles.optionIcon}>
-                  <MaterialCommunityIcons name="google" size={22} color="#4285F4" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.optionLabel, { marginBottom: 2 }]}>{gDriveUser.name}</Text>
-                  <Text style={{ fontFamily: Fonts.regular, fontSize: FontSizes.xs, color: Colors.textMuted }}>{gDriveUser.email}</Text>
-                </View>
-                <View style={{ backgroundColor: Colors.successLight, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
-                  <Text style={{ fontFamily: Fonts.semiBold, fontSize: 10, color: Colors.success }}>CONNECTED</Text>
-                </View>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={async () => {
+              setBackupProgress('Checking files...');
+              const result = await createManualBackup((status) => setBackupProgress(status));
+              setBackupProgress(null);
+              if (result.success) {
+                Alert.alert('\u2705 Backup Generated', 'Your backup ZIP has been created. You can now select "Google Drive" (or other apps) from the sharing menu to upload it.');
+              } else {
+                Alert.alert('Backup Failed', result.error || 'Unknown error.');
+              }
+            }}
+            disabled={!!backupProgress}
+          >
+            <View style={styles.optionIcon}>
+              <MaterialCommunityIcons name="google-drive" size={22} color={Colors.primary} />
+            </View>
+            <Text style={styles.optionLabel}>Upload Zip to Google Drive</Text>
+            {backupProgress ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, color: Colors.textMuted, marginRight: 5 }}>{backupProgress}</Text>
+                <ActivityIndicator size="small" color={Colors.accent} />
               </View>
-              <TouchableOpacity
-                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
-                onPress={async () => {
-                  if (!subStatus?.isPro) {
-                    setShowUpgradeModal(true);
-                    return;
-                  }
-                  setBackupProgress('Starting backup...');
-                  const result = await backupToGoogleDrive((status) => setBackupProgress(status));
-                  setBackupProgress(null);
-                  if (result.success) {
-                    Alert.alert('\u2705 Backup Complete', 'Your entire database has been safely uploaded to your Google Drive in the "IMS Backup" folder.');
-                  } else {
-                    Alert.alert('Backup Failed', result.error || 'Unknown error.');
-                  }
-                }}
-                disabled={!!backupProgress}
-              >
-                <View style={styles.optionIcon}>
-                  <MaterialCommunityIcons name="cloud-upload" size={22} color={Colors.primary} />
-                </View>
-                <Text style={styles.optionLabel}>Upload Backup to Drive</Text>
-                {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
-                {backupProgress ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
-                onPress={async () => {
-                  if (!subStatus?.isPro) {
-                    setShowUpgradeModal(true);
-                    return;
-                  }
-                  Alert.alert('Restore from Drive', 'This will overwrite ALL current local data with the latest backup from your Google Drive. Continue?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Restore', style: 'destructive', onPress: async () => {
-                      setBackupProgress('Downloading backup...');
-                      const result = await getLatestBackupFromDrive();
-                      if (result.success && result.data) {
-                        const importResult = await importBackup(result.data);
-                        setBackupProgress(null);
-                        if (importResult.success) {
-                          Alert.alert('\u2705 Restored', 'Data restored from Google Drive successfully.', [
-                            { text: 'OK', onPress: () => loadSettings() }
-                          ]);
-                        } else {
-                          Alert.alert('Restore Failed', importResult.error || 'Invalid backup data.');
-                        }
-                      } else {
-                        setBackupProgress(null);
-                        Alert.alert('Error', result.error || 'Failed to download backup.');
-                      }
-                    }}
-                  ]);
-                }}
-              >
-                <View style={styles.optionIcon}>
-                  <MaterialCommunityIcons name="cloud-download" size={22} color={Colors.primary} />
-                </View>
-                <Text style={styles.optionLabel}>Restore from Drive</Text>
-                {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
-                <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.optionRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight }]}
-                onPress={() => {
-                  Alert.alert('Disconnect Google', 'This will only remove the connection from this app. Your backups on Google Drive will remain safe.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Disconnect', style: 'destructive', onPress: async () => {
-                      await signOutGoogle();
-                      setGDriveUser(null);
-                    }}
-                  ]);
-                }}
-              >
-                <View style={styles.optionIcon}>
-                  <MaterialCommunityIcons name="link-off" size={22} color={Colors.danger} />
-                </View>
-                <Text style={[styles.optionLabel, { color: Colors.danger }]}>Disconnect Google Account</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              style={styles.optionRow}
-              onPress={async () => {
-                if (!subStatus?.isPro) {
-                  setShowUpgradeModal(true);
-                  return;
-                }
-                const result = await googleSignIn();
-                if (result.success) {
-                  const gUser = await getStoredGoogleUser();
-                  setGDriveUser(gUser);
-                  Alert.alert('\u2705 Connected!', 'Your Google account is now linked. You can now upload your database backups to Google Drive.');
-                } else {
-                  Alert.alert('Connection Failed', result.error || 'Could not connect to Google.');
-                }
-              }}
-            >
-              <View style={styles.optionIcon}>
-                <MaterialCommunityIcons name="google-drive" size={22} color={Colors.primary} />
-              </View>
-              <Text style={styles.optionLabel}>Connect Google Drive</Text>
-              {!subStatus?.isPro && <MaterialCommunityIcons name="crown" size={20} color={Colors.accent} style={{ marginRight: 8 }} />}
+            ) : (
               <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.hintBox}>
+            <MaterialCommunityIcons name="information-outline" size={16} color={Colors.textMuted} />
+            <Text style={styles.hintText}>This will create a ZIP containing your database and all client media files.</Text>
+          </View>
         </View>
 
         <Text style={styles.sectionHeader}>{t('settings.about')}</Text>
@@ -555,8 +431,6 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
-
-        <AdComponent />
 
         {/* Currency Modal */}
         <Modal visible={showCurrencyModal} transparent={true} animationType="slide">
@@ -769,11 +643,6 @@ export default function SettingsScreen() {
 
       </ScrollView>
 
-      <UpgradeModal 
-        visible={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)}
-        onSuccess={loadSubscription}
-      />
 
       <SuggestionModal 
         visible={showSuggestionModal}
@@ -870,17 +739,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
   },
-  roleBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-  },
-  roleText: {
-    fontFamily: Fonts.medium,
-    fontSize: FontSizes.xs,
-    color: Colors.surface,
-  },
+
   sectionHeader: {
     fontFamily: Fonts.semiBold,
     fontSize: FontSizes.xs,
@@ -1180,31 +1039,19 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 8,
   },
-  upgradeHeaderCard: {
-    backgroundColor: Colors.primary,
+  hintBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: Spacing.md,
-    borderRadius: Radius.lg,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.accent + '60',
-    ...Shadows.md,
+    backgroundColor: Colors.surfaceAlt,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
   },
-  upgradeHeaderInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  upgradeHeaderText: {
-    fontFamily: Fonts.bold,
-    fontSize: FontSizes.base,
-    color: Colors.accent,
-  },
-  upgradeHeaderSub: {
+  hintText: {
+    flex: 1,
     fontFamily: Fonts.regular,
-    fontSize: 10,
-    color: Colors.accentLight,
-    opacity: 0.8,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginLeft: Spacing.xs,
   },
 });

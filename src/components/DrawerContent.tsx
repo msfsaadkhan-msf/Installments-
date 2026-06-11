@@ -17,7 +17,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
 
   return (
     <View style={styles.container}>
-      {/* Premium Header with Gradient */}
+      {/* Header with Gradient */}
       <LinearGradient
         colors={[Colors.primary, Colors.primaryDark]}
         style={styles.header}
@@ -41,7 +41,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             <Text style={styles.userEmail} numberOfLines={1}>{user?.email}</Text>
             <View style={styles.roleBadge}>
               <MaterialCommunityIcons name="shield-check" size={10} color={Colors.accent} />
-              <Text style={styles.roleText}>{user?.role.toUpperCase()}</Text>
+              <Text style={styles.roleText}>ADMIN ACCESS</Text>
             </View>
           </View>
         </View>
@@ -166,7 +166,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         </View>
       </DrawerContentScrollView>
 
-      {/* Premium Footer */}
+      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.logoutButton} 

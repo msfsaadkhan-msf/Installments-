@@ -1,6 +1,7 @@
 import { Linking, Alert } from 'react-native';
 import { Installment, Payment } from '../types';
 import { getBusinessProfile, getCurrencySetting } from '../services/storage';
+// @ts-ignore
 import { formatCurrency } from '../theme';
 
 function formatDateReadable(isoDateStr: string): string {

@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import * as Localization from 'expo-localization';
+// import * as Localization from 'expo-localization'; // Temporarily disabled due to corrupted build artifacts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { I18nManager } from 'react-native';
 import { Platform } from 'react-native';
@@ -20,7 +20,7 @@ export const LANGUAGE_KEY = '@ims_language';
 export const setLanguage = async (lng: string) => {
   await AsyncStorage.setItem(LANGUAGE_KEY, lng);
   await i18n.changeLanguage(lng);
-  
+
   const isRTL = lng === 'ar' || lng === 'ur';
   if (I18nManager.isRTL !== isRTL) {
     I18nManager.forceRTL(isRTL);
@@ -28,34 +28,42 @@ export const setLanguage = async (lng: string) => {
   }
 };
 
-const initI18n = async () => {
-  let savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
+// Initialize i18n with resources immediately (synchronous)
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: 'en', // Default language
+    fallbackLng: 'en',
+    interpolation: {
+      escapeValue: false,
+    },
+    react: {
+      useSuspense: false,
+    }
+  });
 
-  if (!savedLanguage) {
-    const locales = Localization.getLocales();
-    savedLanguage = locales?.[0]?.languageCode || 'en';
-  }
+// Async initialization to load saved settings
+export const initI18n = async () => {
+  try {
+    let savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
 
-  await i18n
-    .use(initReactI18next)
-    .init({
-      resources,
-      lng: savedLanguage,
-      fallbackLng: 'en',
-      interpolation: {
-        escapeValue: false,
-      },
-      react: {
-        useSuspense: false,
-      }
-    });
+    if (!savedLanguage) {
+      // Safe detection - fallback to en during environment instability
+      savedLanguage = 'en';
+    }
 
-  const isRTL = savedLanguage === 'ar' || savedLanguage === 'ur';
-  if (I18nManager.isRTL !== isRTL) {
-    I18nManager.forceRTL(isRTL);
+    if (savedLanguage !== 'en') {
+      await i18n.changeLanguage(savedLanguage);
+    }
+
+    const isRTL = savedLanguage === 'ar' || savedLanguage === 'ur';
+    if (I18nManager.isRTL !== isRTL) {
+      I18nManager.forceRTL(isRTL);
+    }
+  } catch (error) {
+    console.warn('i18n init error:', error);
   }
 };
-
-initI18n();
 
 export default i18n;

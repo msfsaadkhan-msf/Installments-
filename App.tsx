@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
-import './src/i18n'; // Initialize i18n translations
+import './src/i18n'; // Synchronous initialization
+import { initI18n } from './src/i18n'; // Async initialization function
 import { registerRootComponent } from 'expo';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -17,7 +18,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { requestNotificationPermissions } from './src/services/notificationService';
-import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
@@ -35,17 +35,7 @@ export default function App() {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
       requestNotificationPermissions();
-
-      // Initialize RevenueCat
-      try {
-        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-        const rcApiKey = 'goog_VNZntpUNMwVhQFReFQvCAjvYQJN';
-        if (Platform.OS === 'android' || Platform.OS === 'ios') {
-          Purchases.configure({ apiKey: rcApiKey });
-        }
-      } catch (e) {
-        console.warn('RevenueCat error:', e);
-      }
+      initI18n(); // Load saved language & RTL settings
     }
   }, [fontsLoaded]);
 

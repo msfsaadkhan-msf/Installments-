@@ -41,23 +41,9 @@
     },
     "plugins": [
       "expo-dev-client",
+      "expo-localization",
       "expo-font",
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow IMS to access your photos for client documentation.",
-          "savePhotosPermission": "Allow IMS to save agreement forms and client photos to your device.",
-          "isAccessMediaLocationEnabled": false
-        }
-      ],
-      "expo-web-browser",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-9748419253991375~8268525370",
-          "iosAppId": "ca-app-pub-9748419253991375~8268525370"
-        }
-      ]
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

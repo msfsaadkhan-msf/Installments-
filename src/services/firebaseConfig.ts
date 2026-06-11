@@ -1,5 +1,6 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
+  getAuth,
   initializeAuth, 
   // @ts-ignore
   getReactNativePersistence 
@@ -18,13 +19,18 @@ const firebaseConfig = {
   measurementId: "G-LWXWVM6YCH"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase App
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firebase Auth with persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+let auth: any;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+} catch (e) {
+  auth = getAuth(app);
+}
 
 // Initialize Firestore with long-polling for React Native compatibility
 const db = initializeFirestore(app, {

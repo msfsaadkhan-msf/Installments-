@@ -76,7 +76,7 @@ function BottomTabs() {
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof MaterialCommunityIcons.glyphMap = 'home';
-          
+
           if (route.name === 'Dashboard') {
             iconName = focused ? 'view-dashboard' : 'view-dashboard-outline';
           } else if (route.name === 'ClientsTab') {
@@ -114,9 +114,9 @@ function BottomTabs() {
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
-      <Tab.Screen 
-        name="ClientsTab" 
-        component={ClientsStack} 
+      <Tab.Screen
+        name="ClientsTab"
+        component={ClientsStack}
         options={{ tabBarLabel: 'Clients' }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
@@ -125,9 +125,9 @@ function BottomTabs() {
           },
         })}
       />
-      <Tab.Screen 
-        name="InstallmentsTab" 
-        component={InstallmentsStack} 
+      <Tab.Screen
+        name="InstallmentsTab"
+        component={InstallmentsStack}
         options={{ tabBarLabel: 'Installments' }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
@@ -137,9 +137,9 @@ function BottomTabs() {
         })}
       />
       <Tab.Screen name="ReportsTab" component={ReportsScreen} options={{ tabBarLabel: 'Reports' }} />
-      <Tab.Screen 
-        name="SettingsTab" 
-        component={SettingsStack} 
+      <Tab.Screen
+        name="SettingsTab"
+        component={SettingsStack}
         options={{ tabBarLabel: 'Settings' }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
@@ -168,9 +168,9 @@ export default function MainDrawer() {
         },
       }}
     >
-      <Drawer.Screen 
-        name="MainTabs" 
-        component={BottomTabs} 
+      <Drawer.Screen
+        name="MainTabs"
+        component={BottomTabs}
         options={{
           drawerLabel: 'Dashboard',
           drawerIcon: ({ color }) => (
@@ -181,6 +181,7 @@ export default function MainDrawer() {
     </Drawer.Navigator>
   );
 }
+
 
 
 

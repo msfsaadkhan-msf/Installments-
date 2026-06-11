@@ -7,10 +7,9 @@ import SearchBar from '../components/SearchBar';
 import FilterPills from '../components/FilterPills';
 import InstallmentCard from '../components/InstallmentCard';
 import EmptyState from '../components/EmptyState';
-import { getInstallments, getClients, getCurrencySetting, deleteInstallment, syncFromCloud } from '../services/storage';
+import { getInstallments, getClients, getCurrencySetting, deleteInstallment, syncDirtyKeys } from '../services/storage';
 import { Installment, InstallmentStatus, Client } from '../types';
 import { generateAgreementPDF } from '../services/pdfService';
-import AdComponent from '../components/AdComponent';
 
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All' },
@@ -97,7 +96,7 @@ export default function InstallmentsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncFromCloud();
+    await syncDirtyKeys();
     await loadData();
     setRefreshing(false);
   };
@@ -193,7 +192,7 @@ export default function InstallmentsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="file-document-remove-outline"
+              icon="file-document-outline"
               title={searchQuery ? "No Results" : "No Installments"}
               message={
                 searchQuery 
@@ -204,7 +203,7 @@ export default function InstallmentsScreen() {
           }
         />
         
-        <AdComponent />
+
       </View>
     </View>
   );

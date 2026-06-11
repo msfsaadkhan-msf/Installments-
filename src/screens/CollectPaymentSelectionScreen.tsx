@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import ClientCard from '../components/ClientCard';
 import EmptyState from '../components/EmptyState';
-import { getClients, syncFromCloud } from '../services/storage';
+import { getClients, syncDirtyKeys } from '../services/storage';
 import { Client } from '../types';
 
 export default function CollectPaymentSelectionScreen() {
@@ -49,7 +49,7 @@ export default function CollectPaymentSelectionScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncFromCloud();
+    await syncDirtyKeys();
     await loadClients();
     setRefreshing(false);
   };

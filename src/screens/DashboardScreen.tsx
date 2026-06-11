@@ -7,15 +7,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Fonts, FontSizes, Spacing, Radius, Shadows, CommonStyles } from '../theme';
 import KPICard from '../components/KPICard';
 import PaymentItem from '../components/PaymentItem';
-import { getClients, getInstallments, getPayments, getCurrencySetting, syncFromCloud } from '../services/storage';
+import { getClients, getInstallments, getPayments, getCurrencySetting, syncDirtyKeys } from '../services/storage';
 import { DashboardStats, Payment, InstallmentStatus } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { getGreeting } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
 import { scheduleOverdueCheckNotification } from '../services/notificationService';
 import { initializeStorage } from '../services/mediaService';
-import AdComponent from '../components/AdComponent';
-import UpgradeModal from '../components/UpgradeModal';
 import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
@@ -40,20 +38,17 @@ export default function DashboardScreen() {
   });
   const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
   const [currency, setCurrency] = useState('PKR (₨)');
-  const [subStatus, setSubStatus] = useState<any>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
 
   const loadData = async () => {
     try {
-      const [allClients, allInstallments, allPayments, currentCurrency, subscriptionStatus] = await Promise.all([
+      const [allClients, allInstallments, allPayments, currentCurrency] = await Promise.all([
         getClients(),
         getInstallments(),
         getPayments(),
-        getCurrencySetting(),
-        (require('../services/subscriptionService')).getSubscriptionStatus()
+        getCurrencySetting()
       ]);
       setCurrency(currentCurrency);
-      setSubStatus(subscriptionStatus);
 
       const now = new Date();
       const currentMonth = now.getMonth();
@@ -132,7 +127,7 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncFromCloud();
+    await syncDirtyKeys();
     await loadData();
     setRefreshing(false);
   };
@@ -279,29 +274,6 @@ export default function DashboardScreen() {
           />
         </View>
 
-        {subStatus && !subStatus.isPro && (
-          <TouchableOpacity 
-            style={styles.upgradeHeaderCard} 
-            onPress={() => setShowUpgradeModal(true)}
-          >
-            <View style={styles.upgradeHeaderInfo}>
-              <MaterialCommunityIcons name="crown" size={24} color={Colors.accent} />
-              <View style={{ marginLeft: 12 }}>
-                <Text style={styles.upgradeHeaderText}>Upgrade to Pro</Text>
-                <Text style={styles.upgradeHeaderSub}>Unlock unlimited clients & plans</Text>
-              </View>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.accent} />
-          </TouchableOpacity>
-        )}
-
-        <AdComponent />
-
-        <UpgradeModal 
-          visible={showUpgradeModal} 
-          onClose={() => setShowUpgradeModal(false)}
-          onSuccess={loadData}
-        />
 
       </ScrollView>
     </View>

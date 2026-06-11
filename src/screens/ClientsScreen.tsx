@@ -7,9 +7,8 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import ClientCard from '../components/ClientCard';
 import EmptyState from '../components/EmptyState';
-import { getClients, deleteClient, syncFromCloud } from '../services/storage';
+import { getClients, deleteClient, syncDirtyKeys } from '../services/storage';
 import { Client } from '../types';
-import AdComponent from '../components/AdComponent';
 
 export default function ClientsScreen() {
   const navigation = useNavigation<any>();
@@ -53,7 +52,7 @@ export default function ClientsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncFromCloud();
+    await syncDirtyKeys();
     await loadClients();
     setRefreshing(false);
   };
@@ -141,7 +140,7 @@ export default function ClientsScreen() {
           }
         />
         
-        <AdComponent />
+
 
         <TouchableOpacity 
           style={styles.fab}

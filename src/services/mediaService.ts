@@ -88,7 +88,7 @@ export async function pickOrCaptureImage(type: 'profile' | 'document'): Promise<
               return;
             }
             const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ['images'],
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: type === 'profile',
               aspect: type === 'profile' ? [1, 1] : undefined,
               quality: 0.7,
@@ -107,7 +107,7 @@ export async function pickOrCaptureImage(type: 'profile' | 'document'): Promise<
               return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ['images'],
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: type === 'profile',
               aspect: type === 'profile' ? [1, 1] : undefined,
               quality: 0.7,

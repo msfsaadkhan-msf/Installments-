@@ -158,21 +158,6 @@ export default function ClientPaymentScreen() {
   };
 
   const handleReceiptAction = async (type: 'whatsapp' | 'print') => {
-    const { getSubscriptionStatus } = require('../services/subscriptionService');
-    const status = await getSubscriptionStatus();
-
-    if (!status.isPro && !status.canAccessReceipts) {
-      Alert.alert(
-        'Pro Feature',
-        'WhatsApp and Print receipts are exclusive to Pro members. Upgrade to unlock premium receipt features.',
-        [
-          { text: 'Later', style: 'cancel' },
-          { text: 'Upgrade to Pro', onPress: () => Alert.alert('Upgrade', 'Payment integration coming soon.') }
-        ]
-      );
-      return;
-    }
-
     if (type === 'whatsapp') {
       const allPayments = await getPayments();
       await generateWhatsAppReceipt(successData.installmentsAffected, allPayments, client.phone);

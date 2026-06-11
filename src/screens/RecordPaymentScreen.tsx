@@ -12,7 +12,6 @@ import { Installment, Payment, PaymentMethod, InstallmentStatus } from '../types
 import { generateId, todayISO } from '../utils/date';
 import { Picker } from '@react-native-picker/picker';
 import { sendImmediatePaymentNotification } from '../services/notificationService';
-import UpgradeModal from '../components/UpgradeModal';
 
 export default function RecordPaymentScreen() {
   const navigation = useNavigation<any>();
@@ -29,19 +28,10 @@ export default function RecordPaymentScreen() {
   const [currency, setCurrency] = useState('PKR (₨)');
   const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
   const [notes, setNotes] = useState(paymentToEdit?.notes || '');
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  const [subStatus, setSubStatus] = useState<any>(null);
-
   React.useEffect(() => {
     (async () => {
-      const { getSubscriptionStatus } = require('../services/subscriptionService');
-      const [c, s] = await Promise.all([
-        getCurrencySetting(),
-        getSubscriptionStatus()
-      ]);
+      const c = await getCurrencySetting();
       setCurrency(c);
-      setSubStatus(s);
     })();
   }, []);
 
@@ -109,10 +99,6 @@ export default function RecordPaymentScreen() {
       });
       setLoading(false);
       setShowSuccess(true);
-      
-      // Trigger Interstitial Ad for Free users
-      const { showInterstitial } = require('../services/adService');
-      showInterstitial();
     } catch (error) {
       Alert.alert('Error', 'Failed to save payment.');
       setLoading(false);
@@ -120,17 +106,6 @@ export default function RecordPaymentScreen() {
   };
 
   const handleReceiptAction = async (action: 'whatsapp' | 'print') => {
-    if (!subStatus?.canAccessReceipts) {
-      Alert.alert(
-        'Pro Feature',
-        'Sharing and printing receipts is a Pro feature. Upgrade to enable professional receipt management.',
-        [
-          { text: 'Maybe Later', style: 'cancel' },
-          { text: 'Upgrade Now', onPress: () => setShowUpgradeModal(true) }
-        ]
-      );
-      return;
-    }
 
     if (action === 'whatsapp') {
       const allPayments = await getPayments();
@@ -305,16 +280,6 @@ export default function RecordPaymentScreen() {
           </View>
         </View>
       </Modal>
-
-      <UpgradeModal 
-        visible={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)}
-        onSuccess={async () => {
-          const { getSubscriptionStatus } = require('../services/subscriptionService');
-          const s = await getSubscriptionStatus();
-          setSubStatus(s);
-        }}
-      />
 
     </View>
   );

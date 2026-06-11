@@ -5,12 +5,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius, Shadows } from '../theme';
 import Header from '../components/Header';
-import { getPayments, syncFromCloud, getCurrencySetting } from '../services/storage';
+import { getPayments, syncDirtyKeys, getCurrencySetting } from '../services/storage';
 import { Payment } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { getInstallments } from '../services/storage';
 import { InstallmentStatus } from '../types';
-import AdComponent from '../components/AdComponent';
 
 export default function ReportsScreen() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -71,7 +70,7 @@ export default function ReportsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncFromCloud();
+    await syncDirtyKeys();
     await loadData();
     setRefreshing(false);
   };
@@ -146,7 +145,7 @@ export default function ReportsScreen() {
           )}
         </View>
 
-        <AdComponent />
+
       </ScrollView>
     </View>
   );
