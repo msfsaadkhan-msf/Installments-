@@ -111,6 +111,21 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
             inactiveTintColor={Colors.surface + 'CC'}
             activeBackgroundColor={Colors.accent + '15'}
           />
+          <DrawerItem
+            label={t('navigation.calculator')}
+            icon={({ focused, color, size }) => (
+              <MaterialCommunityIcons 
+                name={focused ? "calculator" : "calculator-variant-outline"} 
+                size={size} 
+                color={focused ? Colors.accent : color} 
+              />
+            )}
+            onPress={() => props.navigation.navigate('Calculator')}
+            labelStyle={styles.drawerLabel}
+            activeTintColor={Colors.accent}
+            inactiveTintColor={Colors.surface + 'CC'}
+            activeBackgroundColor={Colors.accent + '15'}
+          />
         </View>
 
         <View style={styles.divider} />

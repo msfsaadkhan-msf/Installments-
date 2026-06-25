@@ -164,7 +164,9 @@ export const generateAndPrintReceipt = async (
                  <span>${formatDateSlash(inst.startDate)}</span>
                  <span>${formatCurrency(advance, cur)} (Adv)</span>
               </div>
-              ${historyPayments.map(p => `
+              ${historyPayments
+                .filter(p => !(formatDateSlash(p.date) === formatDateSlash(inst.startDate) && p.amount === advance))
+                .map(p => `
                 <div class="history-item ${p.id === payment.id ? 'bold' : ''}">
                   <span>${formatDateSlash(p.date)}</span>
                   <span>${formatCurrency(p.amount, cur)} ${p.id === payment.id ? '(Now)' : ''}</span>
@@ -176,7 +178,7 @@ export const generateAndPrintReceipt = async (
           <div class="section border-top border-bottom" style="padding: 10px 0;">
             <table>
               <tr>
-                <td>Instills Paid:</td>
+                <td>Installments Paid:</td>
                 <td class="right">${historyPayments.length}</td>
               </tr>
               <tr>

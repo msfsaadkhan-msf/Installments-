@@ -24,6 +24,7 @@ import AgreementFormScreen from '../screens/AgreementFormScreen';
 import BusinessProfileScreen from '../screens/BusinessProfileScreen';
 import EditTermsScreen from '../screens/EditTermsScreen';
 import CollectPaymentSelectionScreen from '../screens/CollectPaymentSelectionScreen';
+import CalculatorScreen from '../screens/CalculatorScreen';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -175,6 +176,16 @@ export default function MainDrawer() {
           drawerLabel: 'Dashboard',
           drawerIcon: ({ color }) => (
             <MaterialCommunityIcons name="view-dashboard" size={24} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Calculator"
+        component={CalculatorScreen}
+        options={{
+          drawerLabel: 'Calculator',
+          drawerIcon: ({ color }) => (
+            <MaterialCommunityIcons name="calculator" size={24} color={color} />
           ),
         }}
       />

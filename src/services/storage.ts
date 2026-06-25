@@ -340,21 +340,11 @@ export async function savePayments(payments: Payment[]): Promise<void> {
   await setJSON(KEYS.PAYMENTS, payments);
 }
 
-export async function addPayment(payment: Payment): Promise<void> {
+export async function addPayment(payment: Payment, manualNextDueDate?: string): Promise<void> {
   const all = await getPayments();
   all.unshift(payment);
   await savePayments(all);
-  await syncInstallmentWithPayments(payment.installmentId);
-}
-
-export async function deletePayment(paymentId: string): Promise<void> {
-  const all = await getPayments();
-  const payment = all.find(p => p.id === paymentId);
-  if (!payment) return;
-  
-  const filtered = all.filter(p => p.id !== paymentId);
-  await savePayments(filtered);
-  await syncInstallmentWithPayments(payment.installmentId);
+  await syncInstallmentWithPayments(payment.installmentId, manualNextDueDate);
 }
 
 export async function updatePayment(updated: Payment): Promise<void> {
@@ -367,11 +357,20 @@ export async function updatePayment(updated: Payment): Promise<void> {
   }
 }
 
-export async function syncInstallmentWithPayments(installmentId: string): Promise<void> {
+export async function deletePayment(paymentId: string): Promise<void> {
+  const all = await getPayments();
+  const payment = all.find(p => p.id === paymentId);
+  if (!payment) return;
+  
+  const filtered = all.filter(p => p.id !== paymentId);
+  await savePayments(filtered);
+  await syncInstallmentWithPayments(payment.installmentId);
+}
+
+export async function syncInstallmentWithPayments(installmentId: string, manualNextDueDate?: string): Promise<void> {
   const installments = await getInstallments();
   const instIdx = installments.findIndex(i => i.id === installmentId);
   if (instIdx === -1) return;
-
   const inst = installments[instIdx];
   const allPayments = await getPayments();
   const instPayments = allPayments.filter(p => p.installmentId === installmentId);
@@ -397,35 +396,32 @@ export async function syncInstallmentWithPayments(installmentId: string): Promis
   // Separate 'Down Payment' records from regular installments
   const downPaymentRecords = sortedChronologically.filter(p => p.receiptNo === 'Down Payment');
   const regularPayments = sortedChronologically.filter(p => p.receiptNo !== 'Down Payment');
-  
   const downPaymentSum = downPaymentRecords.reduce((sum, p) => sum + p.amount, 0);
   const regularPaidSum = regularPayments.reduce((sum, p) => sum + p.amount, 0);
 
-  
-  // Update downPayment based on payment records.
-  // For new installments, the 'Down Payment' record is created automatically.
-  // If the user deletes it, downPaymentSum will be 0, and we reflect that.
-  // We only do this if there's at least one payment record (of any type)
-  // to avoid accidentally wiping downPayment for old installments that have no records at all.
   if (instPayments.length > 0 || (inst.paidAmount === 0 && inst.paidInstallments === 0)) {
     inst.downPayment = downPaymentSum;
   }
   
   inst.paidAmount = regularPaidSum;
   inst.remainingAmount = Math.max(0, inst.totalAmount - inst.downPayment - inst.paidAmount);
-  
-  // Update paidInstallments count
   inst.paidInstallments = regularPayments.length;
   
-  // Real-time update of nextDueDate: startDate + (paidInstallments + 1)
   const { addMonths, todayISO } = require('../utils/date');
-  inst.nextDueDate = addMonths(inst.startDate, inst.paidInstallments + 1);
+
+  // Logic: If manualNextDueDate is provided (from Edit screen), use it.
+  // Otherwise, only recalculate if the paid count has changed, or if it's missing/invalid.
+  if (manualNextDueDate) {
+    inst.nextDueDate = manualNextDueDate;
+  } else {
+     // Default automatic calculation
+     inst.nextDueDate = addMonths(inst.startDate, inst.paidInstallments + 1);
+  }
   
   if (inst.remainingAmount <= 0) {
     inst.status = InstallmentStatus.COMPLETED;
-    inst.remainingAmount = 0; // Ensure no negative balance
+    inst.remainingAmount = 0; 
   } else {
-    // Check if new nextDueDate makes it overdue or active
     const today = todayISO();
     if (inst.nextDueDate < today) {
       inst.status = InstallmentStatus.OVERDUE;

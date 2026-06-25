@@ -158,15 +158,24 @@ export default function ClientPaymentScreen() {
   };
 
   const handleReceiptAction = async (type: 'whatsapp' | 'print') => {
-    if (type === 'whatsapp') {
-      const allPayments = await getPayments();
-      await generateWhatsAppReceipt(successData.installmentsAffected, allPayments, client.phone);
-    } else {
-      await generateAndPrintReceipt(
-        client.name, 
-        successData.createdPayments, 
-        successData.installmentsAffected
-      );
+    try {
+      if (type === 'whatsapp') {
+        if (client && client.phone) {
+          const allPayments = await getPayments();
+          await generateWhatsAppReceipt(successData.installmentsAffected, allPayments, client.phone);
+        } else {
+          Alert.alert('Error', 'Could not find a phone number for this client. Please check client details.');
+        }
+      } else {
+        await generateAndPrintReceipt(
+          client.name, 
+          successData.createdPayments, 
+          successData.installmentsAffected
+        );
+      }
+    } catch (error: any) {
+      console.error('Receipt Action Error:', error);
+      Alert.alert('Error', 'An unexpected error occurred: ' + (error.message || 'Unknown error'));
     }
   };
 

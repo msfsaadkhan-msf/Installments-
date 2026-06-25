@@ -253,13 +253,13 @@ export async function generateAgreementPDF(installment: Installment, clientData?
                   <table style="margin:0 auto; border:2px solid #1B2A4A; width:75px; height:45px;">
                     <tr><td style="width:75px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Customer Sig &amp; Thumb</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Customer Signature &amp; Thumb</p>
                 </td>
                 <td style="width:25%; text-align:center; padding:2px;">
                   <table style="margin:0 auto; width:100px; height:45px;">
                     <tr><td style="width:100px; height:45px;">&nbsp;</td></tr>
                   </table>
-                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Company Stamp &amp; Sig</p>
+                  <p style="font-size:9px; font-weight:bold; text-transform:uppercase; margin:6px 0 0 0; border-top:2px solid #1B2A4A; padding-top:4px;">Company Stamp &amp; Signature</p>
                 </td>
               </tr>
             </table>

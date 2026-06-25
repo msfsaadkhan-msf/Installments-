@@ -61,29 +61,29 @@ export default function RecordPaymentScreen() {
     setLoading(true);
 
     try {
+      const newOrUpdatedPayment: Payment = paymentToEdit ? {
+        ...paymentToEdit,
+        amount: payAmount,
+        date: paymentDate,
+        receiptNo,
+        method,
+        notes,
+      } : {
+        id: generateId(),
+        installmentId: installment.id,
+        clientName: installment.clientName,
+        productName: installment.productName,
+        amount: payAmount,
+        date: paymentDate,
+        receiptNo: receiptNo,
+        method,
+        notes,
+      };
+
       if (paymentToEdit) {
-        const updatedPayment: Payment = {
-          ...paymentToEdit,
-          amount: payAmount,
-          date: paymentDate,
-          receiptNo,
-          method,
-          notes,
-        };
-        await updatePayment(updatedPayment);
+        await updatePayment(newOrUpdatedPayment);
       } else {
-        const newPayment: Payment = {
-          id: generateId(),
-          installmentId: installment.id,
-          clientName: installment.clientName,
-          productName: installment.productName,
-          amount: payAmount,
-          date: paymentDate,
-          receiptNo: receiptNo,
-          method,
-          notes,
-        };
-        await addPayment(newPayment);
+        await addPayment(newOrUpdatedPayment);
       }
 
       // Re-fetch installment to get synced values
@@ -95,7 +95,8 @@ export default function RecordPaymentScreen() {
         remainingAmount: refreshedInstallment?.remainingAmount || 0,
         nextDueDate: refreshedInstallment?.nextDueDate || installment.nextDueDate,
         monthlyAmount: refreshedInstallment?.monthlyAmount || installment.monthlyAmount,
-        updatedInstallment: refreshedInstallment || installment
+        updatedInstallment: refreshedInstallment || installment,
+        payment: newOrUpdatedPayment
       });
       setLoading(false);
       setShowSuccess(true);
@@ -106,26 +107,25 @@ export default function RecordPaymentScreen() {
   };
 
   const handleReceiptAction = async (action: 'whatsapp' | 'print') => {
-
-    if (action === 'whatsapp') {
-      const allPayments = await getPayments();
-      let clientPhone = '';
-      const clients = await getClients();
-      const c = clients.find(c => c.id === installment?.clientId);
-      if (c) clientPhone = c.phone;
-      await generateWhatsAppReceipt([successData.updatedInstallment], allPayments, clientPhone);
-    } else {
-      const currentPayment: Payment = {
-        id: generateId(),
-        installmentId: installment.id,
-        clientName: installment.clientName,
-        productName: installment.productName,
-        amount: parseFloat(amount),
-        date: paymentDate,
-        receiptNo: receiptNo,
-        method,
-      };
-      await generateAndPrintReceipt(installment.clientName, [currentPayment], [successData.updatedInstallment]);
+    try {
+      if (action === 'whatsapp') {
+        const allPayments = await getPayments();
+        let clientPhone = '';
+        const clients = await getClients();
+        const c = clients.find(c => c.id === installment?.clientId);
+        
+        if (c && c.phone) {
+          clientPhone = c.phone;
+          await generateWhatsAppReceipt([successData.updatedInstallment], allPayments, clientPhone);
+        } else {
+          Alert.alert('Error', 'Could not find a phone number for this client. Please check client details.');
+        }
+      } else {
+        await generateAndPrintReceipt(installment.clientName, [successData.payment], [successData.updatedInstallment]);
+      }
+    } catch (error: any) {
+      console.error('Receipt Action Error:', error);
+      Alert.alert('Error', 'An unexpected error occurred: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -148,8 +148,8 @@ export default function RecordPaymentScreen() {
           <Text style={CommonStyles.sectionTitle}>Payment Details</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Amount ({formatCurrency(0, currency).split(' ')[0]}) *</Text>
-            <View style={CommonStyles.inputContainer}>
+            <Text style={CommonStyles.inputLabel}>Amount *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
               <TextInput
                 style={[CommonStyles.inputText, { fontSize: FontSizes.xl, fontFamily: Fonts.bold, color: Colors.primary }]}
                 placeholder="0"
@@ -158,6 +158,9 @@ export default function RecordPaymentScreen() {
                 value={amount}
                 onChangeText={setAmount}
               />
+              <Text style={[styles.inputAdornment, { color: Colors.primary, fontSize: FontSizes.lg, marginLeft: Spacing.sm }]}>
+                {currency.split(' ')[0]}
+              </Text>
             </View>
           </View>
 
@@ -350,5 +353,17 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginBottom: 4,
+  },
+  addPhotoBtnText: {
+    fontFamily: Fonts.medium,
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
+  inputAdornment: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
+    marginLeft: Spacing.xs,
   },
 });

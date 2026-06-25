@@ -280,7 +280,7 @@ export default function NewInstallmentScreen() {
         if (savedPhotos.length > 0) updatedPlan.productImage = savedPhotos[0];
         
         await updateInstallment(updatedPlan);
-        await syncInstallmentWithPayments(updatedPlan.id);
+        await syncInstallmentWithPayments(updatedPlan.id, updatedPlan.nextDueDate);
       } else {
         const finalInvoiceNo = invoiceNo || await getPreviewNextInvoiceNumber();
         const newPlan: Installment = {
@@ -339,7 +339,7 @@ export default function NewInstallmentScreen() {
             receiptNo: 'Down Payment',
             method: 'Cash' as any,
           };
-          await addPayment(downPaymentRecord);
+          await addPayment(downPaymentRecord, newPlan.nextDueDate);
         }
       }
 
@@ -574,33 +574,44 @@ export default function NewInstallmentScreen() {
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Financial Details</Text>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Product Price ({currency.split(' ')[0]}) *</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="e.g. 100000" keyboardType="numeric" value={productPrice} onChangeText={handlePriceChange} />
+            <Text style={CommonStyles.inputLabel}>Product Price *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput 
+                style={CommonStyles.inputText} 
+                placeholder="0" 
+                keyboardType="numeric" 
+                value={productPrice} 
+                onChangeText={handlePriceChange} 
+              />
+              <Text style={styles.inputAdornment}>{currency.split(' ')[0]}</Text>
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Markup Percentage (%) *</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="e.g. 35" keyboardType="numeric" value={productPercentage} onChangeText={handlePercentageChange} />
+            <Text style={CommonStyles.inputLabel}>Markup Percentage *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput style={CommonStyles.inputText} placeholder="0" keyboardType="numeric" value={productPercentage} onChangeText={handlePercentageChange} />
+              <Text style={styles.inputAdornment}>%</Text>
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Total Product Value ({currency.split(' ')[0]}) *</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="e.g. 135000" keyboardType="numeric" value={totalAmount} onChangeText={handleTotalAmountChange} />
+            <Text style={CommonStyles.inputLabel}>Total Product Value *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput style={CommonStyles.inputText} placeholder="0" keyboardType="numeric" value={totalAmount} onChangeText={handleTotalAmountChange} />
+              <Text style={styles.inputAdornment}>{currency.split(' ')[0]}</Text>
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Down Payment ({formatCurrency(0, currency).split(' ')[0]}) *</Text>
-            <View style={CommonStyles.inputContainer}>
-              <TextInput style={CommonStyles.inputText} placeholder="50000" keyboardType="numeric" value={downPayment} onChangeText={setDownPayment} />
+            <Text style={CommonStyles.inputLabel}>Down Payment *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput style={CommonStyles.inputText} placeholder="0" keyboardType="numeric" value={downPayment} onChangeText={setDownPayment} />
+              <Text style={styles.inputAdornment}>{currency.split(' ')[0]}</Text>
             </View>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={CommonStyles.inputLabel}>Plan Tenure (Months) *</Text>
-            <View style={CommonStyles.inputContainer}>
+            <Text style={CommonStyles.inputLabel}>Plan Tenure *</Text>
+            <View style={[CommonStyles.inputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
               <TextInput style={CommonStyles.inputText} placeholder="12" keyboardType="numeric" value={tenure} onChangeText={handleTenureChange} />
+              <Text style={styles.inputAdornment}>Months</Text>
             </View>
           </View>
         </View>
@@ -738,6 +749,18 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: Spacing.md,
+  },
+  modalDataText: {
+    fontFamily: Fonts.medium,
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  inputAdornment: {
+    fontFamily: Fonts.bold,
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
+    marginLeft: Spacing.xs,
   },
   summaryLabel: {
     fontFamily: Fonts.medium,
