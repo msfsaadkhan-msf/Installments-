@@ -9,7 +9,7 @@ import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Radius } from '../them
 import { formatCurrency } from '../utils/currency';
 import Header from '../components/Header';
 import { Installment, Payment, PaymentMethod, InstallmentStatus } from '../types';
-import { generateId, todayISO } from '../utils/date';
+import { generateId, todayISO, addMonths } from '../utils/date';
 import { Picker } from '@react-native-picker/picker';
 import { sendImmediatePaymentNotification } from '../services/notificationService';
 
@@ -27,6 +27,14 @@ export default function RecordPaymentScreen() {
   const [successData, setSuccessData] = useState<any>(null);
   const [currency, setCurrency] = useState('PKR (₨)');
   const [paymentDate, setPaymentDate] = useState(paymentToEdit?.date || todayISO());
+  
+  // Predict default next due date from installment's current next due date.
+  // This ensures any manual date shifts (like day of month) carry forward month-to-month.
+  const defaultNextDue = installment 
+    ? (paymentToEdit ? installment.nextDueDate : addMonths(installment.nextDueDate, 1))
+    : todayISO();
+  const [nextDueDate, setNextDueDate] = useState(defaultNextDue);
+
   const [notes, setNotes] = useState(paymentToEdit?.notes || '');
   React.useEffect(() => {
     (async () => {
@@ -81,9 +89,9 @@ export default function RecordPaymentScreen() {
       };
 
       if (paymentToEdit) {
-        await updatePayment(newOrUpdatedPayment);
+        await updatePayment(newOrUpdatedPayment, nextDueDate || undefined);
       } else {
-        await addPayment(newOrUpdatedPayment);
+        await addPayment(newOrUpdatedPayment, nextDueDate || undefined);
       }
 
       // Re-fetch installment to get synced values
@@ -189,6 +197,19 @@ export default function RecordPaymentScreen() {
                 placeholderTextColor={Colors.textMuted}
                 value={paymentDate}
                 onChangeText={setPaymentDate}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={CommonStyles.inputLabel}>Next Due Date (YYYY-MM-DD)</Text>
+            <View style={CommonStyles.inputContainer}>
+              <TextInput
+                style={CommonStyles.inputText}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={Colors.textMuted}
+                value={nextDueDate}
+                onChangeText={setNextDueDate}
               />
             </View>
           </View>

@@ -34,7 +34,7 @@ export const generateWhatsAppReceipt = async (
     installments.forEach((inst, index) => {
       // Filter and sort history
       const instPayments = payments
-        .filter(p => p.installmentId === inst.id)
+        .filter(p => p.installmentId === inst.id && p.receiptNo !== 'Down Payment')
         .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       messageLines.push(businessName.toUpperCase());

@@ -69,10 +69,10 @@ export default function NewInstallmentScreen() {
     })();
   }, [planToEdit]);
 
-  const [isManualMonthly, setIsManualMonthly] = useState(false);
-  const [isManualTotal, setIsManualTotal] = useState(false);
-  const [isManualNextDue, setIsManualNextDue] = useState(false);
-  const [isManualEndDate, setIsManualEndDate] = useState(false);
+  const [isManualMonthly, setIsManualMonthly] = useState(!!planToEdit);
+  const [isManualTotal, setIsManualTotal] = useState(!!planToEdit);
+  const [isManualNextDue, setIsManualNextDue] = useState(!!planToEdit);
+  const [isManualEndDate, setIsManualEndDate] = useState(!!planToEdit);
 
   useEffect(() => {
     if (!isManualEndDate && startDate && tenure) {

@@ -39,7 +39,7 @@ const CURRENCIES = [
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, changePassword } = useAuth();
   const [currency, setCurrency] = useState('PKR (₨)');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [language, setLanguageState] = useState('en');
@@ -70,6 +70,15 @@ export default function SettingsScreen() {
   const [cameraVisible, setCameraVisible] = useState(false);
 
   const [backupProgress, setBackupProgress] = useState<string | null>(null);
+
+  // Change Password State
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isVerifyingBio, setIsVerifyingBio] = useState(false);
+  const [isBioVerified, setIsBioVerified] = useState(false);
+  const [showCurrentPasswordInput, setShowCurrentPasswordInput] = useState(true);
 
   useEffect(() => {
     loadSettings();
@@ -316,6 +325,85 @@ export default function SettingsScreen() {
     setTempTerms(` <${tag}>${tempTerms}</${tag}> `);
   };
 
+  const handleBiometricVerify = async () => {
+    setIsVerifyingBio(true);
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Verify identity to change password',
+        fallbackLabel: 'Use Password',
+      });
+
+      if (result.success) {
+        setIsBioVerified(true);
+        setShowCurrentPasswordInput(false);
+        Alert.alert('Verified', 'Biometric verification successful. Please enter your new password.');
+      } else {
+        Alert.alert('Verification Failed', 'Could not verify biometric credentials.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Biometric authentication error occurred.');
+    } finally {
+      setIsVerifyingBio(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!isBioVerified && !currentPassword) {
+      Alert.alert('Error', 'Please enter your current password or verify via biometrics.');
+      return;
+    }
+    if (!newPassword || !confirmNewPassword) {
+      Alert.alert('Error', 'Please enter and confirm your new password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      let finalCurrentPassword = currentPassword;
+
+      if (isBioVerified) {
+        const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
+        const passwords = JSON.parse(passwordsRaw || '{}');
+        const cachedPass = passwords[user?.id || ''];
+        
+        if (cachedPass) {
+          finalCurrentPassword = cachedPass;
+        } else {
+          Alert.alert('Verify Password', 'Biometric session data missing. Please enter your current password manually.');
+          setIsUpdating(false);
+          setIsBioVerified(false);
+          setShowCurrentPasswordInput(true);
+          return;
+        }
+      }
+
+      const result = await changePassword(finalCurrentPassword, newPassword);
+      if (result.success) {
+        Alert.alert('Success', 'Password changed successfully.');
+        setShowChangePassword(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setIsBioVerified(false);
+        setShowCurrentPasswordInput(true);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to change password.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const OptionRow = ({ icon, label, rightText, onPress, showChevron = true }: { icon: any, label: string, rightText?: string, onPress?: () => void, showChevron?: boolean }) => (
     <TouchableOpacity style={styles.optionRow} onPress={onPress} disabled={!onPress}>
       <View style={styles.optionIcon}>
@@ -376,6 +464,7 @@ export default function SettingsScreen() {
           )}
           <OptionRow icon="translate" label={t('settings.language')} rightText={language === 'en' ? 'English' : language === 'ur' ? 'اردو' : 'العربية'} onPress={() => setShowLanguageModal(true)} />
           <OptionRow icon="currency-usd" label={t('settings.currency')} rightText={currency} onPress={() => setShowCurrencyModal(true)} />
+          <OptionRow icon="lock-outline" label="Change Password" onPress={() => setShowChangePassword(true)} />
         </View>
 
         <Text style={styles.sectionHeader}>{t('settings.data_management')}</Text>
@@ -650,6 +739,117 @@ export default function SettingsScreen() {
         userName={user?.name || ''}
         userPhone={user?.phone || ''}
       />
+
+      {/* Change Password Modal */}
+      <Modal visible={showChangePassword} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeaderExtended}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>Change Password</Text>
+                <TouchableOpacity onPress={() => {
+                  setShowChangePassword(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                  setIsBioVerified(false);
+                  setShowCurrentPasswordInput(true);
+                }}>
+                  <MaterialCommunityIcons name="close" size={24} color={Colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl }}>
+              {biometricEnabled && isBiometricSupported && (
+                <View style={{ marginBottom: Spacing.base }}>
+                  {isBioVerified ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.success + '15', padding: Spacing.md, borderRadius: Radius.md }}>
+                      <MaterialCommunityIcons name="shield-check" size={24} color={Colors.success} />
+                      <Text style={{ marginLeft: Spacing.sm, fontFamily: Fonts.medium, fontSize: FontSizes.sm, color: Colors.success }}>
+                        Biometrics verified successfully
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: Spacing.md,
+                        backgroundColor: Colors.primary + '10',
+                        borderRadius: Radius.md,
+                        borderWidth: 1,
+                        borderColor: Colors.primary + '30',
+                      }}
+                      onPress={handleBiometricVerify}
+                      disabled={isVerifyingBio}
+                    >
+                      {isVerifyingBio ? (
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      ) : (
+                        <>
+                          <MaterialCommunityIcons name="fingerprint" size={24} color={Colors.primary} />
+                          <Text style={{ fontFamily: Fonts.bold, fontSize: FontSizes.base, color: Colors.primary, marginLeft: Spacing.sm }}>
+                            Verify with Biometrics
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {showCurrentPasswordInput && !isBioVerified && (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Current Password</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                    secureTextEntry
+                  />
+                </View>
+              )}
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>New Password</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Enter new password (min. 6 chars)"
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Confirm New Password</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={confirmNewPassword}
+                  onChangeText={setConfirmNewPassword}
+                  placeholder="Confirm new password"
+                  secureTextEntry
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.saveButton, isUpdating && { opacity: 0.7 }]} 
+                onPress={handleChangePassword}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Confirm Change</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Language Modal */}
       <Modal visible={showLanguageModal} transparent={true} animationType="fade">

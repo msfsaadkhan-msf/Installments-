@@ -5,7 +5,10 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,6 +53,7 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   bioLogin: () => Promise<{ success: boolean; error?: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -111,6 +115,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await saveCurrentUser(userDoc.data() as User);
       dispatch({ type: 'LOGIN', payload: userDoc.data() as User });
+      
+      try {
+        const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
+        const passwords = JSON.parse(passwordsRaw || '{}');
+        passwords[userCredential.user.uid] = password;
+        await AsyncStorage.setItem('@ims_passwords', JSON.stringify(passwords));
+      } catch (e) {
+        console.warn('Failed to cache password locally', e);
+      }
+
       // Push any pending offline writes now that we're online
       syncDirtyKeys().catch(() => {});
       startRealtimeSync();
@@ -158,6 +172,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Explicitly lock the user in memory and cache so race conditions don't boot them out
       await saveCurrentUser(newUser);
       dispatch({ type: 'LOGIN', payload: newUser });
+
+      try {
+        const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
+        const passwords = JSON.parse(passwordsRaw || '{}');
+        passwords[uid] = password;
+        await AsyncStorage.setItem('@ims_passwords', JSON.stringify(passwords));
+      } catch (e) {
+        console.warn('Failed to cache registered password locally', e);
+      }
 
       return { success: true };
     } catch (err: any) {
@@ -216,8 +239,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !state.user) {
+        return { success: false, error: 'User is not logged in.' };
+      }
+      
+      const email = user.email || state.user.email;
+      if (!email) {
+        return { success: false, error: 'User email is not available.' };
+      }
+
+      const credential = EmailAuthProvider.credential(email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      await updatePassword(user, newPassword);
+
+      try {
+        const passwordsRaw = await AsyncStorage.getItem('@ims_passwords');
+        const passwords = JSON.parse(passwordsRaw || '{}');
+        passwords[user.uid] = newPassword;
+        await AsyncStorage.setItem('@ims_passwords', JSON.stringify(passwords));
+      } catch (e) {
+        console.warn('Failed to cache new password locally', e);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      let errorMessage = 'Failed to change password.';
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorMessage = 'Incorrect current password.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'New password should be at least 6 characters.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, updateProfile, bioLogin }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, updateProfile, bioLogin, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

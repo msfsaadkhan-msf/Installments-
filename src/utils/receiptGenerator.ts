@@ -59,7 +59,11 @@ export const generateAndPrintReceipt = async (
   const totalProductValue = inst.totalAmount;
   const advance = inst.downPayment;
   const currentPayment = payment.amount;
-  const totalPaid = inst.paidAmount || historyPayments.reduce((sum, p) => sum + p.amount, 0) + advance;
+
+  const regularHistoryPayments = historyPayments.filter(p => p.receiptNo !== 'Down Payment');
+  const regularPaidTotal = inst.paidAmount !== undefined && inst.paidAmount !== null ? inst.paidAmount : regularHistoryPayments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = regularPaidTotal + advance;
+
   const remaining = inst.remainingAmount;
   const nextDue = inst.nextDueDate;
   const monthly = inst.monthlyAmount;
@@ -165,7 +169,7 @@ export const generateAndPrintReceipt = async (
                  <span>${formatCurrency(advance, cur)} (Adv)</span>
               </div>
               ${historyPayments
-                .filter(p => !(formatDateSlash(p.date) === formatDateSlash(inst.startDate) && p.amount === advance))
+                .filter(p => p.receiptNo !== 'Down Payment')
                 .map(p => `
                 <div class="history-item ${p.id === payment.id ? 'bold' : ''}">
                   <span>${formatDateSlash(p.date)}</span>
@@ -179,7 +183,7 @@ export const generateAndPrintReceipt = async (
             <table>
               <tr>
                 <td>Installments Paid:</td>
-                <td class="right">${historyPayments.length}</td>
+                <td class="right">${historyPayments.filter(p => p.receiptNo !== 'Down Payment').length}</td>
               </tr>
               <tr>
                 <td>Total Paid:</td>

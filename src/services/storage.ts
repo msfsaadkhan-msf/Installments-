@@ -347,13 +347,13 @@ export async function addPayment(payment: Payment, manualNextDueDate?: string): 
   await syncInstallmentWithPayments(payment.installmentId, manualNextDueDate);
 }
 
-export async function updatePayment(updated: Payment): Promise<void> {
+export async function updatePayment(updated: Payment, manualNextDueDate?: string): Promise<void> {
   const all = await getPayments();
   const idx = all.findIndex(p => p.id === updated.id);
   if (idx !== -1) {
     all[idx] = updated;
     await savePayments(all);
-    await syncInstallmentWithPayments(updated.installmentId);
+    await syncInstallmentWithPayments(updated.installmentId, manualNextDueDate);
   }
 }
 
@@ -374,6 +374,9 @@ export async function syncInstallmentWithPayments(installmentId: string, manualN
   const inst = installments[instIdx];
   const allPayments = await getPayments();
   const instPayments = allPayments.filter(p => p.installmentId === installmentId);
+  
+  // Track old paid count to know how many months to shift the date incrementally
+  const oldPaidInstallments = inst.paidInstallments;
   
   // Sort chronologically for ledger calculation (oldest first)
   const sortedChronologically = [...instPayments].sort((a, b) => {
@@ -405,17 +408,25 @@ export async function syncInstallmentWithPayments(installmentId: string, manualN
   
   inst.paidAmount = regularPaidSum;
   inst.remainingAmount = Math.max(0, inst.totalAmount - inst.downPayment - inst.paidAmount);
-  inst.paidInstallments = regularPayments.length;
+  
+  const newPaidInstallments = regularPayments.length;
+  inst.paidInstallments = newPaidInstallments;
   
   const { addMonths, todayISO } = require('../utils/date');
 
   // Logic: If manualNextDueDate is provided (from Edit screen), use it.
-  // Otherwise, only recalculate if the paid count has changed, or if it's missing/invalid.
+  // Otherwise, only recalculate incrementally if the paid count has changed.
   if (manualNextDueDate) {
     inst.nextDueDate = manualNextDueDate;
   } else {
-     // Default automatic calculation
-     inst.nextDueDate = addMonths(inst.startDate, inst.paidInstallments + 1);
+    // Determine how many payments were truly added/removed via background process
+    const diff = newPaidInstallments - (oldPaidInstallments || 0);
+    if (diff !== 0 && inst.nextDueDate) {
+      inst.nextDueDate = addMonths(inst.nextDueDate, diff);
+    } else if (!inst.nextDueDate) {
+      // absolute bare metal fallback for corrupted data
+      inst.nextDueDate = addMonths(inst.startDate, newPaidInstallments + 1);
+    }
   }
   
   if (inst.remainingAmount <= 0) {

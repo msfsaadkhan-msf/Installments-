@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Alert, 
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Fonts, FontSizes, Spacing, CommonStyles, Shadows, Radius } from '../theme';
@@ -71,12 +71,6 @@ export default function InstallmentDetailScreen() {
   const handleDownloadImage = async () => {
     if (!viewingImage) return;
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow photo access to save this image.');
-        return;
-      }
-      
       let localUri = viewingImage;
       if (viewingImage.startsWith('data:image')) {
         localUri = FileSystem.documentDirectory + 'download_' + Date.now() + '.jpg';
@@ -84,11 +78,14 @@ export default function InstallmentDetailScreen() {
         await FileSystem.writeAsStringAsync(localUri, base64Data, { encoding: 'base64' });
       }
 
-      await MediaLibrary.saveToLibraryAsync(localUri);
-      Alert.alert('Success', 'Image saved to your gallery!');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(localUri);
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device.');
+      }
     } catch (e) {
       console.error('Download error', e);
-      Alert.alert('Error', 'Failed to save image.');
+      Alert.alert('Error', 'Failed to share image.');
     }
   };
 

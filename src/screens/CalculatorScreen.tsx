@@ -250,6 +250,11 @@ export default function CalculatorScreen() {
             <Text style={styles.resultValue}>{currency.split(' ')[0]} {totalValue.toLocaleString()}</Text>
           </View>
 
+          <View style={styles.resultRow}>
+            <Text style={styles.resultLabel}>Down Payment:</Text>
+            <Text style={styles.resultValue}>{currency.split(' ')[0]} {(parseFloat(downPayment) || 0).toLocaleString()}</Text>
+          </View>
+
           <View style={styles.divider} />
 
           <View style={styles.subHeaderRow}>
